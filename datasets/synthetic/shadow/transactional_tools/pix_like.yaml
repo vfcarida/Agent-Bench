@@ -1,0 +1,5451 @@
+domain: pix_like
+family: transactional_tools
+version: 1.0.0
+source_type: synthetic_shadow
+description: Synthetic transactional_tools cases generated deterministically
+tasks:
+- task_id: SYN_PIX_0001
+  name: PIX transfer sufficient (cpf)
+  description: Synthetic PIX transfer - sufficient scenario, key=cpf, amount=R$7519.48
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$7519,48 para a chave cpf 990.735.846-68
+  initial_state:
+    balance: 56935.51
+    daily_used: 17377.79
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 49416.03
+    amount: 7519.48
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0002
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=40972.23, available=9027.77)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fzr PIX?
+  initial_state:
+    balance: 83077.53
+    daily_limit: 50000.0
+    daily_used: 40972.23
+  expected_final_state:
+    limit_queried: true
+    available_limit: 9027.77
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0003
+  name: PIX transfer sufficient (aleatoria)
+  description: Synthetic PIX transfer - sufficient scenario, key=aleatoria, amount=R$28163.66
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso AGORA: quero fazer um PIX de mais ou menos 28163.66 reais para
+      a chave aleatoria 1cbde641c72206c12f18160055026916'
+  initial_state:
+    balance: 37547.51
+    daily_used: 3457.75
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 9383.85
+    amount: 28163.66
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0004
+  name: PIX transfer edge_limit (aleatoria)
+  description: Synthetic PIX transfer - edge_limit scenario, key=aleatoria, amount=R$31402.09
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$31402,09 para a chave aleatoria 2df4bef56f85f0ed219739f957c2aaca
+  initial_state:
+    balance: 41402.09
+    daily_used: 18597.86
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 31402.09
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0005
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$11164.43
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso AGORA: faz 4 PIX: R$3260,69 pro telefone +5519999570680 e R$3017,58
+      pro email amanda.costa623@yahoo.com.br e R$2577,04 para aleatoria 83cb8a24a0baa7d9e5db4ee62cb921f5
+      e R$2309,12 para telefone +5581992951980'
+  initial_state:
+    balance: 17211.6
+    daily_used: 25120.4
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 11164.43
+    balance: 6047.17
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0006
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=35721.28, available=14278.72)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Poderia, por gentileza, quero saber meu limite de PIX restante
+  initial_state:
+    balance: 25029.55
+    daily_limit: 50000.0
+    daily_used: 35721.28
+  expected_final_state:
+    limit_queried: true
+    available_limit: 14278.72
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0007
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=16255.87, available=33744.13)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 38374.2
+    daily_limit: 50000.0
+    daily_used: 16255.87
+  expected_final_state:
+    limit_queried: true
+    available_limit: 33744.13
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0008
+  name: PIX transfer edge_limit (telefone)
+  description: Synthetic PIX transfer - edge_limit scenario, key=telefone, amount=R$40721.09
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$40721,09 pro PIX telefone +5541996204774
+  initial_state:
+    balance: 50721.09
+    daily_used: 9278.4
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 40721.09
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0009
+  name: PIX reversal within window
+  description: Reversal of R$9065.44 made 18h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Errei o PIX de R$9065,44 de ontem. Da pra cancelar?
+  initial_state:
+    balance: 29705.27
+    last_transfer_hours_ago: 18
+    last_transfer_amount: 9065.44
+    last_transfer_id: tx_32871bc0
+  expected_final_state:
+    reversal_executed: true
+    balance: 38770.71
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0010
+  name: PIX transfer limit_exceeded (telefone)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=telefone, amount=R$6819.79
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Preciso enviar R$6819,79 por PIX para +5527996195824
+  initial_state:
+    balance: 16819.79
+    daily_used: 43564.38
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 16819.79
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0011
+  name: PIX transfer edge_balance (email)
+  description: Synthetic PIX transfer - edge_balance scenario, key=email, amount=R$28558.42
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso AGORA: transfere R$28558,42 via PIX para beatriz.ribeiro440@hotmail.com'
+  initial_state:
+    balance: 28559.21
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.79
+    amount: 28558.42
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0012
+  name: PIX transfer sufficient (cpf)
+  description: Synthetic PIX transfer - sufficient scenario, key=cpf, amount=R$29525.48
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: URGENTE! transfere R$29525,48 via PIX para 939.383.947-48
+  initial_state:
+    balance: 46501.87
+    daily_used: 1064.91
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 16976.39
+    amount: 29525.48
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0013
+  name: PIX transfer edge_balance (cpf)
+  description: Synthetic PIX transfer - edge_balance scenario, key=cpf, amount=R$21755.57
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$21755,57 pro PIX cpf 949.401.093-31
+  initial_state:
+    balance: 21756.33
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.76
+    amount: 21755.57
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0014
+  name: PIX transfer insufficient (email)
+  description: Synthetic PIX transfer - insufficient scenario, key=email, amount=R$17446.93
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Nao pode esperar! quero fazer um PIX de R$17446,93 para a chave email
+      pedro.lima267@gmail.com
+  initial_state:
+    balance: 12052.14
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 12052.14
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0015
+  name: PIX transfer sufficient (telefone)
+  description: Synthetic PIX transfer - sufficient scenario, key=telefone, amount=R$2061.42
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$2061,42 para a chave telefone +5527990244289
+  initial_state:
+    balance: 38914.1
+    daily_used: 33046.1
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 36852.68
+    amount: 2061.42
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0016
+  name: PIX transfer edge_limit (email)
+  description: Synthetic PIX transfer - edge_limit scenario, key=email, amount=R$10318.19
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$10318,19 para a chave email beatriz.silva563@yahoo.com.br
+  initial_state:
+    balance: 20318.19
+    daily_used: 39681.49
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 10318.19
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0017
+  name: PIX transfer insufficient (email)
+  description: Synthetic PIX transfer - insufficient scenario, key=email, amount=R$13838.01
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Nao pode esperar! quero fazer um PIX de tipo 13838.01 reais para a chave
+      email gustavo.almeida571@uol.com.br
+  initial_state:
+    balance: 8224.98
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 8224.98
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0018
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$10098.09
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 3 PIX: R$4565,66 para email maria.gomes807@outlook.com e R$3292,89
+      pro aleatoria 976023436c3b385f68afb4ce28148d81 e R$2239,54 pro aleatoria 4d0853f3d2e26eab9d0c9238c62acb96'
+  initial_state:
+    balance: 27748.29
+    daily_used: 23820.21
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 10098.09
+    balance: 17650.2
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0019
+  name: PIX transfer limit_exceeded (aleatoria)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=aleatoria, amount=R$2303.15
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Rapido por favor, preciso enviar R$2303,15 por PIX para 35fa4861de2c6d33f13f078d854067c1
+  initial_state:
+    balance: 12303.15
+    daily_used: 50288.9
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 12303.15
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0020
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$10831.95
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 4 PIX: R$2767,06 pro email maria.souza546@uol.com.br e R$1117,48
+      pro aleatoria f6e06519aac3e7e563affdfa3fd2e7a9 e R$4341,11 pro cpf 527.225.396-64
+      e R$2606,30 para cpf 320.838.575-77'
+  initial_state:
+    balance: 18654.76
+    daily_used: 30444.88
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 10831.95
+    balance: 7822.81
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0021
+  name: PIX reversal within window
+  description: Reversal of R$5406.45 made 19h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Sei que ja perguntei antes mas esqueci a resposta. Quero desfazer um
+      PIX de acho que 5406.45 feito ontem
+  initial_state:
+    balance: 12057.93
+    last_transfer_hours_ago: 19
+    last_transfer_amount: 5406.45
+    last_transfer_id: tx_3af8d81a
+  expected_final_state:
+    reversal_executed: true
+    balance: 17464.38
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0022
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=43739.13, available=6260.87)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Eh urgente, qual meu limite de PIX disponivel hoj?e
+  initial_state:
+    balance: 89860.68
+    daily_limit: 50000.0
+    daily_used: 43739.13
+  expected_final_state:
+    limit_queried: true
+    available_limit: 6260.87
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0023
+  name: PIX transfer sufficient (email)
+  description: Synthetic PIX transfer - sufficient scenario, key=email, amount=R$2588.12
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Rapido por favor, quero fazer um PIX de R$2588,12 para a chave email
+      ana.pereira337@gmail.com
+  initial_state:
+    balance: 27721.44
+    daily_used: 12227.89
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 25133.32
+    amount: 2588.12
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0024
+  name: PIX transfer insufficient (aleatoria)
+  description: Synthetic PIX transfer - insufficient scenario, key=aleatoria, amount=R$17190.82
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Transfere R$17190,82 via PIX pra a6f18afe5f334612f30a54cf4dca85d4
+  initial_state:
+    balance: 3526.64
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 3526.64
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0025
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=23940.33, available=26059.67)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Rapido por favor, desculpa a demora, tava no mercado. Entao, Qual meu
+      limite de PIX disponivel hoje?
+  initial_state:
+    balance: 37752.34
+    daily_limit: 50000.0
+    daily_used: 23940.33
+  expected_final_state:
+    limit_queried: true
+    available_limit: 26059.67
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0026
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=21208.45, available=28791.55)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Qual meu limite de PIX disponivel hoje?
+  initial_state:
+    balance: 22227.39
+    daily_limit: 50000.0
+    daily_used: 21208.45
+  expected_final_state:
+    limit_queried: true
+    available_limit: 28791.55
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0027
+  name: PIX transfer insufficient (email)
+  description: Synthetic PIX transfer - insufficient scenario, key=email, amount=R$31163.23
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$31163,23 para a chave email fernanda.ribeiro970@hotmail.com
+  initial_state:
+    balance: 17705.06
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 17705.06
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0028
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=31185.66, available=18814.34)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quanto ainda posso transferir via PIX hoje?
+  initial_state:
+    balance: 50027.21
+    daily_limit: 50000.0
+    daily_used: 31185.66
+  expected_final_state:
+    limit_queried: true
+    available_limit: 18814.34
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0029
+  name: PIX transfer sufficient (telefone)
+  description: Synthetic PIX transfer - sufficient scenario, key=telefone, amount=R$48543.41
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda uns 48543.41 pro PIX fone +5541993281079
+  initial_state:
+    balance: 91051.17
+    daily_used: -7971.02
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 42507.76
+    amount: 48543.41
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0030
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$923.26
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Poderia, por gentileza, faz 2 PIX: R$451,49 pro aleatoria 71a823fce30f87aa421d1b9445219ebc
+      e R$471,77 para aleatoria 016d139f7054673c9c900e547e8b911e'
+  initial_state:
+    balance: 11576.94
+    daily_used: 28274.04
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 923.26
+    balance: 10653.68
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0031
+  name: PIX transfer limit_exceeded (cpf)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=cpf, amount=R$22507.28
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz isso JA: preciso enviar R$22507,28 por PIX para 218.808.437-52'
+  initial_state:
+    balance: 32507.28
+    daily_used: 31760.21
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 32507.28
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0032
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=28634.04, available=21365.96)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Prezado atendente, gostaria de solicitar quanto ainda posso transferir
+      via PIX hoje?
+  initial_state:
+    balance: 66832.64
+    daily_limit: 50000.0
+    daily_used: 28634.04
+  expected_final_state:
+    limit_queried: true
+    available_limit: 21365.96
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0033
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$9315.05
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 4 PIX: R$2047,69 pro aleatoria 02ef61293cf3931bf071c155e104bd80
+      e R$1781,62 pro cpf 032.628.314-20 e R$4903,29 para email julia.ribeiro988@outlook.com
+      e R$582,45 para email thiago.silva331@yahoo.com.br'
+  initial_state:
+    balance: 17212.03
+    daily_used: 36500.5
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 9315.05
+    balance: 7896.98
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0034
+  name: PIX transfer edge_balance (aleatoria)
+  description: Synthetic PIX transfer - edge_balance scenario, key=aleatoria, amount=R$6982.78
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Minha esposa pediu pra eu resolver isso logo. Manda mais ou menos 6982.78
+      reais pro PIX aleatoria d02cc38c63ffee4607ba412533ecf59e
+  initial_state:
+    balance: 6983.55
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.77
+    amount: 6982.78
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0035
+  name: PIX transfer edge_balance (cpf)
+  description: Synthetic PIX transfer - edge_balance scenario, key=cpf, amount=R$23304.11
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$23304,11 praa a chave cpf 615.189.130-49
+  initial_state:
+    balance: 23305.05
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.94
+    amount: 23304.11
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0036
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$3920.34
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 3 PIX: R$3027,01 pro telefone +5561994431316 e R$385,98 para telefone
+      +5561998156158 e R$507,35 pro aleatoria 9ac13657c4b1e2045d04da635388c8f1'
+  initial_state:
+    balance: 12511.93
+    daily_used: 4700.01
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 3920.34
+    balance: 8591.59
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0037
+  name: PIX transfer edge_balance (cpf)
+  description: Synthetic PIX transfer - edge_balance scenario, key=cpf, amount=R$43376.12
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Meu vizinho indicou esse banco, parece bom. Bom, voltando ao assunto:
+      Quero faze um PIX de R$43376,12 para a chave cpf 744.563.715-11'
+  initial_state:
+    balance: 43376.69
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.57
+    amount: 43376.12
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0038
+  name: PIX reversal within window
+  description: Reversal of R$8095.67 made 8h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Fala, quero desfazer um PIX de R$8095,67 feito ontem
+  initial_state:
+    balance: 49842.86
+    last_transfer_hours_ago: 8
+    last_transfer_amount: 8095.67
+    last_transfer_id: tx_36704b74
+  expected_final_state:
+    reversal_executed: true
+    balance: 57938.53
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0039
+  name: PIX reversal outside window
+  description: Reversal of R$1058.68 made 31h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Ja tentei no app mas deu erro, entao: Fiz um PIX errado de mais ou menos
+      1058.68 reais anteontem, consigo estornar?'
+  initial_state:
+    balance: 25138.98
+    last_transfer_hours_ago: 31
+    last_transfer_amount: 1058.68
+    last_transfer_id: tx_d84f1b53
+  expected_final_state:
+    reversal_executed: false
+    balance: 25138.98
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0040
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=49495.24, available=504.76)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 40970.01
+    daily_limit: 50000.0
+    daily_used: 49495.24
+  expected_final_state:
+    limit_queried: true
+    available_limit: 504.76
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0041
+  name: PIX transfer edge_limit (cpf)
+  description: Synthetic PIX transfer - edge_limit scenario, key=cpf, amount=R$39958.23
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Transfere R$39958,23 via PIX para 759.019.123-27
+  initial_state:
+    balance: 49958.23
+    daily_used: 10040.81
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 39958.23
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0042
+  name: PIX reversal outside window
+  description: Reversal of R$4599.2 made 40h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero desfazer um PIX de R$4599,20 feito anteontem
+  initial_state:
+    balance: 33305.47
+    last_transfer_hours_ago: 40
+    last_transfer_amount: 4599.2
+    last_transfer_id: tx_bd78b04b
+  expected_final_state:
+    reversal_executed: false
+    balance: 33305.47
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0043
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$8009.94
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Fala, faz 3 PIX: R$1765,34 para telefone +5519996443377 e R$1986,98
+      pro cpf 291381525-91 e R$4257,62 para email larissapereira334@uolcombr'
+  initial_state:
+    balance: 10977.46
+    daily_used: 20931.34
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 8009.94
+    balance: 2967.52
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0044
+  name: PIX transfer edge_balance (telefone)
+  description: Synthetic PIX transfer - edge_balance scenario, key=telefone, amount=R$19016.61
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Transfere R$19016,61 via PIX para +5521991095218
+  initial_state:
+    balance: 19017.51
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.9
+    amount: 19016.61
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0045
+  name: PIX transfer sufficient (cpf)
+  description: Synthetic PIX transfer - sufficient scenario, key=cpf, amount=R$41374.49
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso pra ontem: transfere R$41374,49 via PIX para 723.561.311-38'
+  initial_state:
+    balance: 79993.64
+    daily_used: -688.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 38619.15
+    amount: 41374.49
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0046
+  name: PIX transfer edge_balance (cpf)
+  description: Synthetic PIX transfer - edge_balance scenario, key=cpf, amount=R$25050.41
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Venho por meio desta solicitar transfere R$25050,41 via PIX para 936.488.633-64
+  initial_state:
+    balance: 25051.31
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.9
+    amount: 25050.41
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0047
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=30608.06, available=19391.94)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Qual meu limite de PIX disponivel hoje?
+  initial_state:
+    balance: 6106.53
+    daily_limit: 50000.0
+    daily_used: 30608.06
+  expected_final_state:
+    limit_queried: true
+    available_limit: 19391.94
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0048
+  name: PIX transfer insufficient (telefone)
+  description: Synthetic PIX transfer - insufficient scenario, key=telefone, amount=R$44584.54
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Faz um PIX de acho que 44584.54 pra telefone +5571996525021
+  initial_state:
+    balance: 31825.04
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 31825.04
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0049
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$7212.78
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz isso JA: faz 4 PIX: R$1676,79 pro cpf 831.265.283-54 e R$1926,30
+      pro telefone +5541994582457 e R$203,78 para aleatoria 0a1da1383819c877cf329d366fea460c
+      e R$3405,91 para aleatoria 21403d486e467263077891b4b5b65e11'
+  initial_state:
+    balance: 17479.96
+    daily_used: 19831.94
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 7212.78
+    balance: 10267.18
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0050
+  name: PIX transfer edge_limit (aleatoria)
+  description: Synthetic PIX transfer - edge_limit scenario, key=aleatoria, amount=R$15132.29
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Poderia, por gentileza, quero fazer um PIX de R$15132,29 para a chave
+      aleatoria bc9e462520a844e261c49616eb528508
+  initial_state:
+    balance: 25132.29
+    daily_used: 34867.67
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 15132.29
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0051
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=27622.45, available=22377.55)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 22763.65
+    daily_limit: 50000.0
+    daily_used: 27622.45
+  expected_final_state:
+    limit_queried: true
+    available_limit: 22377.55
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0052
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$8540.2
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso AGORA: faz 3 PIX: R$3583,39 para aleatoria 62c13f2dc24a667154c9c66353b40afd
+      e R$3988,74 pro telefone +5527993572271 e R$968,07 pro telefone +5527996420609'
+  initial_state:
+    balance: 19420.49
+    daily_used: 26951.44
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 8540.2
+    balance: 10880.29
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0053
+  name: PIX transfer edge_limit (aleatoria)
+  description: Synthetic PIX transfer - edge_limit scenario, key=aleatoria, amount=R$11591.45
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$11591,45 pro PIX aleatoria 7bbafae55815b1cba4675db2e6beadfd
+  initial_state:
+    balance: 21591.45
+    daily_used: 38408.17
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 11591.45
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0054
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$5846.68
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 2 PIX: R$3004,73 para telefone +5571995492084 e R$2841,95 para telefone
+      +5521994470629'
+  initial_state:
+    balance: 21641.07
+    daily_used: 5583.41
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 5846.68
+    balance: 15794.39
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0055
+  name: PIX transfer edge_balance (email)
+  description: Synthetic PIX transfer - edge_balance scenario, key=email, amount=R$37826.43
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso pra ontem: pIX de uns 37826.43 para emali fernanda.ribeiro570@outlook.com
+      por favor'
+  initial_state:
+    balance: 37827.22
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.79
+    amount: 37826.43
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0056
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$3328.5
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 2 PIX: R$2520,75 pro aleatoria 16e1d92f8b92c22e27938ebdf0ec57fe
+      e R$807,75 para email maria.rodrigues740@yahoo.com.br'
+  initial_state:
+    balance: 17282.16
+    daily_used: 7586.69
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 3328.5
+    balance: 13953.66
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0057
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=36514.64, available=13485.36)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero saber meu limite de PIX restante
+  initial_state:
+    balance: 81086.07
+    daily_limit: 50000.0
+    daily_used: 36514.64
+  expected_final_state:
+    limit_queried: true
+    available_limit: 13485.36
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0058
+  name: PIX transfer insufficient (aleatoria)
+  description: Synthetic PIX transfer - insufficient scenario, key=aleatoria, amount=R$37454.07
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$37454,07 pro PIX aleatoria f8f6a8abc4d8781159c1900c25b6bbf6
+  initial_state:
+    balance: 15526.07
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 15526.07
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0059
+  name: PIX reversal outside window
+  description: Reversal of R$5648.24 made 72h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso pra ontem: quero desfazer um PIX de R$5648,24 feito faz uns
+      dias'
+  initial_state:
+    balance: 11460.29
+    last_transfer_hours_ago: 72
+    last_transfer_amount: 5648.24
+    last_transfer_id: tx_2bc6e27a
+  expected_final_state:
+    reversal_executed: false
+    balance: 11460.29
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0060
+  name: PIX transfer insufficient (aleatoria)
+  description: Synthetic PIX transfer - insufficient scenario, key=aleatoria, amount=R$15375.56
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso AGORA: faz um PIX de R$15375,56 pra aleatoria 460377e2835a3d0bc28006597356ae27'
+  initial_state:
+    balance: 8365.99
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 8365.99
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0061
+  name: PIX reversal outside window
+  description: Reversal of R$9407.07 made 42h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Fiz um PIX errado de R$9407,07 anteontem, consigo estornar?
+  initial_state:
+    balance: 4322.97
+    last_transfer_hours_ago: 42
+    last_transfer_amount: 9407.07
+    last_transfer_id: tx_c7b529a4
+  expected_final_state:
+    reversal_executed: false
+    balance: 4322.97
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0062
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$9658.79
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Emergencia! faz 4 PIX: R$903,67 pro cpf 728.603.963-02 e R$1337,33 para
+      email joao.almeida814@hotmail.com e R$3351,75 pro telefone +5527995607556 e
+      R$4066,04 para telefone +5581991000533'
+  initial_state:
+    balance: 25348.49
+    daily_used: 36399.76
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 9658.79
+    balance: 15689.7
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0063
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=39128.47, available=10871.53)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quanto ainda posso transferir via PIX hoje?
+  initial_state:
+    balance: 14786.23
+    daily_limit: 50000.0
+    daily_used: 39128.47
+  expected_final_state:
+    limit_queried: true
+    available_limit: 10871.53
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0064
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=28317.17, available=21682.83)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quanto ainda posso transferir via PIX hoje?
+  initial_state:
+    balance: 97276.7
+    daily_limit: 50000.0
+    daily_used: 28317.17
+  expected_final_state:
+    limit_queried: true
+    available_limit: 21682.83
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0065
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$7199.13
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 3 PIX: R$771,80 pro cpf 422.648.895-53 e R$4602,32 pro email carlos.martins338@hotmail.com
+      e R$1825,01 pro cpf 615.393.703-32'
+  initial_state:
+    balance: 24156.34
+    daily_used: 39458.8
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 7199.13
+    balance: 16957.21
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0066
+  name: PIX transfer edge_balance (aleatoria)
+  description: Synthetic PIX transfer - edge_balance scenario, key=aleatoria, amount=R$19677.62
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso pra ontem: desculpa a demora, tava no mercado. Entao, Transfere
+      mais ou menos 19677.62 reais via PIX para 48ad30f97de1f0c71ef7398f07d0f9bd'
+  initial_state:
+    balance: 19678.21
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.59
+    amount: 19677.62
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0067
+  name: PIX transfer limit_exceeded (email)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=email, amount=R$3397.84
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Rapido por favor, faz um PIX de R$3397,84 pra email larissa.ferreira235@outlook.com
+  initial_state:
+    balance: 13397.84
+    daily_used: 46805.22
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 13397.84
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0068
+  name: PIX transfer edge_limit (email)
+  description: Synthetic PIX transfer - edge_limit scenario, key=email, amount=R$28338.68
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Eh urgente, manda R$28338,68 pro PIX email maria.ferreira607@hotmail.com
+  initial_state:
+    balance: 38338.68
+    daily_used: 21660.56
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 28338.68
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0069
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$8094.85
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 2 PIX: mais ou menos 4467.75 reais para tel +5531992828404 e R$3627,10
+      para email maria.carvalho573@uol.com.br'
+  initial_state:
+    balance: 11020.48
+    daily_used: 18209.46
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 8094.85
+    balance: 2925.63
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0070
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=32375.29, available=17624.71)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: qnt ainda posso transferri via PIX hoje?
+  initial_state:
+    balance: 70204.93
+    daily_limit: 50000.0
+    daily_used: 32375.29
+  expected_final_state:
+    limit_queried: true
+    available_limit: 17624.71
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0071
+  name: PIX transfer insufficient (email)
+  description: Synthetic PIX transfer - insufficient scenario, key=email, amount=R$31317.59
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$31317,59 para a chave email beatriz.pereira406@gmail.com
+  initial_state:
+    balance: 23342.28
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 23342.28
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0072
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$6520.0
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 3 PIX: R$916,27 para cpf 662.147.593-58 e R$944,32 para email ana.ribeiro58@uol.com.br
+      e R$4659,41 pro cpf 364.739.459-02'
+  initial_state:
+    balance: 25316.94
+    daily_used: 21993.57
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 6520.0
+    balance: 18796.94
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0073
+  name: PIX transfer insufficient (email)
+  description: Synthetic PIX transfer - insufficient scenario, key=email, amount=R$29681.6
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$29681,60 para a chave email rafael.gomes706@hotmail.com
+  initial_state:
+    balance: 21686.67
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 21686.67
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0074
+  name: PIX reversal within window
+  description: Reversal of R$8952.36 made 9h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Fiz um PIX errado de R$8952,36 ontem, consigo estornar?
+  initial_state:
+    balance: 41738.47
+    last_transfer_hours_ago: 9
+    last_transfer_amount: 8952.36
+    last_transfer_id: tx_9c5d5f63
+  expected_final_state:
+    reversal_executed: true
+    balance: 50690.83
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0075
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=32089.23, available=17910.77)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero saber meu limite de PIX restante
+  initial_state:
+    balance: 16848.13
+    daily_limit: 50000.0
+    daily_used: 32089.23
+  expected_final_state:
+    limit_queried: true
+    available_limit: 17910.77
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0076
+  name: PIX transfer edge_limit (telefone)
+  description: Synthetic PIX transfer - edge_limit scenario, key=telefone, amount=R$32850.24
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de acho que 32850.24 praa a aquela chave la
+  initial_state:
+    balance: 42850.24
+    daily_used: 17149.19
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 32850.24
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0077
+  name: PIX transfer edge_limit (telefone)
+  description: Synthetic PIX transfer - edge_limit scenario, key=telefone, amount=R$36490.23
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$36490,23 pro PIX fone +5581996676432
+  initial_state:
+    balance: 46490.23
+    daily_used: 13509.34
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 36490.23
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0078
+  name: PIX transfer edge_balance (telefone)
+  description: Synthetic PIX transfer - edge_balance scenario, key=telefone, amount=R$3985.01
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Transfere R$3985,01 via PIX para +5527990721904
+  initial_state:
+    balance: 3985.5
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.49
+    amount: 3985.01
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0079
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$9386.09
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso pra ontem: minha esposa pediu pra eu resolver isso logo. Faz
+      3 PIX: R$716,56 para cpf 750.260.258-71 e R$4084,28 para aleatoria 273d0b6f0c0a45fca6ac48b68a2be94f
+      e R$4585,16 para email beatriz.almeida185@outlook.com'
+  initial_state:
+    balance: 26871.1
+    daily_used: 32720.25
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 9386.09
+    balance: 17485.01
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0080
+  name: PIX transfer edge_limit (telefone)
+  description: Synthetic PIX transfer - edge_limit scenario, key=telefone, amount=R$21123.16
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Mano, faz um PIX de R$21123,16 pra telefone +5511990391491
+  initial_state:
+    balance: 31123.16
+    daily_used: 28876.48
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 21123.16
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0081
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=33822.45, available=16177.55)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ah, e outra coisa, meu celular ta travando direto. Enfim, Ainda tenho
+      limite pra fazer PIX?
+  initial_state:
+    balance: 35235.13
+    daily_limit: 50000.0
+    daily_used: 33822.45
+  expected_final_state:
+    limit_queried: true
+    available_limit: 16177.55
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0082
+  name: PIX reversal within window
+  description: Reversal of R$8481.43 made 15h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Desculpa a demora, tava no mercado. Entao, Quero desfazer um PIX de R$8481,43
+      feito ontem
+  initial_state:
+    balance: 24978.83
+    last_transfer_hours_ago: 15
+    last_transfer_amount: 8481.43
+    last_transfer_id: tx_e7d35281
+  expected_final_state:
+    reversal_executed: true
+    balance: 33460.26
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0083
+  name: PIX reversal within window
+  description: Reversal of R$4606.18 made 13h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Errei o PIX de R$4606,18 de ontem. Da pra cancelar?
+  initial_state:
+    balance: 45536.54
+    last_transfer_hours_ago: 13
+    last_transfer_amount: 4606.18
+    last_transfer_id: tx_fd713c98
+  expected_final_state:
+    reversal_executed: true
+    balance: 50142.72
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0084
+  name: PIX transfer insufficient (telefone)
+  description: Synthetic PIX transfer - insufficient scenario, key=telefone, amount=R$40130.06
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ah, e outra coisa, meu celular ta travando direto. Enfim, Transfere R$40130,06
+      via PIX para +5561993529679
+  initial_state:
+    balance: 17643.08
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 17643.08
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0085
+  name: PIX reversal within window
+  description: Reversal of R$5128.96 made 2h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Venho por meio desta solicitar quero desfazer um PIX de R$5128,96 feito
+      agora pouco
+  initial_state:
+    balance: 46029.43
+    last_transfer_hours_ago: 2
+    last_transfer_amount: 5128.96
+    last_transfer_id: tx_0e6642d5
+  expected_final_state:
+    reversal_executed: true
+    balance: 51158.39
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0086
+  name: PIX transfer sufficient (telefone)
+  description: Synthetic PIX transfer - sufficient scenario, key=telefone, amount=R$34691.78
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: PIX de R$34691,78 para telefone +5514992055409 por favor
+  initial_state:
+    balance: 67188.26
+    daily_used: 4590.48
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 32496.48
+    amount: 34691.78
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0087
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$1838.11
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Meu vizinho indicou esse banco, parece bom. Bom, voltando ao assunto:
+      Faz 2 PIX: tipo 1138.50 reais para cpf 039.993.794-73 e R$699,61 para telefone
+      +5531993224124'
+  initial_state:
+    balance: 2999.47
+    daily_used: 11512.95
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 1838.11
+    balance: 1161.36
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0088
+  name: PIX transfer insufficient (email)
+  description: Synthetic PIX transfer - insufficient scenario, key=email, amount=R$19709.77
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Transfere R$19709,77 via PIX para maria.santos241@hotmail.com
+  initial_state:
+    balance: 7556.93
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 7556.93
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0089
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$4892.97
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso AGORA: faz 2 PIX: R$2151,03 pro aleatoria 39068e9e1e6ac55397d9f75fe8eca00c
+      e R$2741,94 para email lucas.lima135@uol.com.br'
+  initial_state:
+    balance: 8946.11
+    daily_used: 282.99
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 4892.97
+    balance: 4053.14
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0090
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=42916.05, available=7083.95)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso pra ontem: desculpa a demora, tava no mercado. Entao, Quero
+      saber meu limite de PIX restante'
+  initial_state:
+    balance: 74950.99
+    daily_limit: 50000.0
+    daily_used: 42916.05
+  expected_final_state:
+    limit_queried: true
+    available_limit: 7083.95
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0091
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=25243.43, available=24756.57)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Qual meu limite de PIX disponivel hoje?
+  initial_state:
+    balance: 51875.85
+    daily_limit: 50000.0
+    daily_used: 25243.43
+  expected_final_state:
+    limit_queried: true
+    available_limit: 24756.57
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0092
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=18986.71, available=31013.29)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Poderia, por gentileza, qual meu limite de PIX disponivel hoje?
+  initial_state:
+    balance: 68633.38
+    daily_limit: 50000.0
+    daily_used: 18986.71
+  expected_final_state:
+    limit_queried: true
+    available_limit: 31013.29
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0093
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=34118.41, available=15881.59)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero saber meu limite de PIX restante
+  initial_state:
+    balance: 43483.27
+    daily_limit: 50000.0
+    daily_used: 34118.41
+  expected_final_state:
+    limit_queried: true
+    available_limit: 15881.59
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0094
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=23376.42, available=26623.58)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Venho por meio desta solicitar qual meu limite de PIX disponivel hoje?
+  initial_state:
+    balance: 24646.31
+    daily_limit: 50000.0
+    daily_used: 23376.42
+  expected_final_state:
+    limit_queried: true
+    available_limit: 26623.58
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0095
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=31453.96, available=18546.04)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Nao pode esperar! quanto ainda posso transferir via PIX hoje?
+  initial_state:
+    balance: 69418.05
+    daily_limit: 50000.0
+    daily_used: 31453.96
+  expected_final_state:
+    limit_queried: true
+    available_limit: 18546.04
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0096
+  name: PIX transfer sufficient (email)
+  description: Synthetic PIX transfer - sufficient scenario, key=email, amount=R$27035.29
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Brother, pIX de R$27035,29 para email larissasouza80@yahoocombr pfv
+  initial_state:
+    balance: 63139.07
+    daily_used: 11418.9
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 36103.78
+    amount: 27035.29
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0097
+  name: PIX transfer sufficient (cpf)
+  description: Synthetic PIX transfer - sufficient scenario, key=cpf, amount=R$14248.5
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Emergencia! pIX de R$14248,50 para cpf 656.229.188-24 por favor
+  initial_state:
+    balance: 39998.9
+    daily_used: 22945.61
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 25750.4
+    amount: 14248.5
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0098
+  name: PIX transfer sufficient (telefone)
+  description: Synthetic PIX transfer - sufficient scenario, key=telefone, amount=R$23224.29
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$23224,29 para a chave telefone +5521999902207
+  initial_state:
+    balance: 46519.27
+    daily_used: 12271.46
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 23294.98
+    amount: 23224.29
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0099
+  name: PIX transfer limit_exceeded (email)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=email, amount=R$35659.2
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Ja tentei no app mas deu erro, entao: Manda acho que 35659.20 pro PIX
+      email maria.martins203@outlook.com'
+  initial_state:
+    balance: 45659.2
+    daily_used: 14688.36
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 45659.2
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0100
+  name: PIX transfer limit_exceeded (cpf)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=cpf, amount=R$23288.91
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$23288,91 pro PIX cpf 295.526.290-53
+  initial_state:
+    balance: 33288.91
+    daily_used: 28454.22
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 33288.91
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0101
+  name: PIX transfer insufficient (telefone)
+  description: Synthetic PIX transfer - insufficient scenario, key=telefone, amount=R$8173.71
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Emergencia! preciso enviar R$8173,71 por PIX para +5511992940661
+  initial_state:
+    balance: 4640.58
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 4640.58
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0102
+  name: PIX transfer sufficient (aleatoria)
+  description: Synthetic PIX transfer - sufficient scenario, key=aleatoria, amount=R$10049.38
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Preciso enviar R$10049,38 por PIX para b783dafe106b6b1b424e1798fc826925
+  initial_state:
+    balance: 43079.24
+    daily_used: 11851.08
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 33029.86
+    amount: 10049.38
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0103
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=48315.89, available=1684.11)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Venho por meio desta solicitar quero saber meu limite de PIX restante
+  initial_state:
+    balance: 43348.03
+    daily_limit: 50000.0
+    daily_used: 48315.89
+  expected_final_state:
+    limit_queried: true
+    available_limit: 1684.11
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0104
+  name: PIX reversal outside window
+  description: Reversal of R$560.19 made 40h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Rapido por favor, errei o PIX de R$560,19 de anteontem. Da pra cancelar?
+  initial_state:
+    balance: 32105.44
+    last_transfer_hours_ago: 40
+    last_transfer_amount: 560.19
+    last_transfer_id: tx_01bfd882
+  expected_final_state:
+    reversal_executed: false
+    balance: 32105.44
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0105
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$7290.91
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Poderia, por gentileza, faz 3 PIX: R$2307,91 pro cpf 557.684.386-29
+      e R$2077,79 pro email fernanda.lima725@gmail.com e R$2905,21 para aleatoria
+      e4400e94adba35dc755761228abe63a3'
+  initial_state:
+    balance: 21909.93
+    daily_used: 35851.52
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 7290.91
+    balance: 14619.02
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0106
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$7957.23
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 4 PIX: R$149,89 para telefone +5519994827994 e R$405,43 pro email
+      larissa.gomes158@yahoo.com.br e R$3608,88 pro email gustavo.lima775@uol.com.br
+      e R$3793,03 para aleatoria 556ddb69792d4a5d40bf0771443aca04'
+  initial_state:
+    balance: 18128.43
+    daily_used: 30358.26
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 7957.23
+    balance: 10171.2
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0107
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$11746.55
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 4 PIX: R$195,54 para aleatoria 3f842f016e96d7c43a04b723a9db09ec
+      e R$4332,32 pro email carlos.oliveira775@uol.com.br e R$4212,74 pra aleatoria
+      e52e12306d3b1a2f84b71b1066653e63 e R$3005,95 para email caimla.souza263@uol.com.br'
+  initial_state:
+    balance: 14022.42
+    daily_used: 5178.43
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 11746.55
+    balance: 2275.87
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0108
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=27390.45, available=22609.55)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 22162.6
+    daily_limit: 50000.0
+    daily_used: 27390.45
+  expected_final_state:
+    limit_queried: true
+    available_limit: 22609.55
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0109
+  name: PIX transfer sufficient (cpf)
+  description: Synthetic PIX transfer - sufficient scenario, key=cpf, amount=R$3206.02
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$3206,02 pra a chave cpf 242.984.138-82
+  initial_state:
+    balance: 28591.17
+    daily_used: 17903.19
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 25385.15
+    amount: 3206.02
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0110
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=45626.38, available=4373.62)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero saber meu limite de PIX restante
+  initial_state:
+    balance: 38587.86
+    daily_limit: 50000.0
+    daily_used: 45626.38
+  expected_final_state:
+    limit_queried: true
+    available_limit: 4373.62
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0111
+  name: PIX reversal outside window
+  description: Reversal of R$3122.32 made 48h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Errei o PIX de R$3122,32 de faz uns disa. Da pra cancelar?
+  initial_state:
+    balance: 30788.29
+    last_transfer_hours_ago: 48
+    last_transfer_amount: 3122.32
+    last_transfer_id: tx_9d57b4e2
+  expected_final_state:
+    reversal_executed: false
+    balance: 30788.29
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0112
+  name: PIX transfer limit_exceeded (email)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=email, amount=R$23611.33
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Fala, faz um PIX de R$23611,33 pra email gustavorodrigues480@gmailcom
+  initial_state:
+    balance: 33611.33
+    daily_used: 31051.91
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 33611.33
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0113
+  name: PIX transfer edge_balance (email)
+  description: Synthetic PIX transfer - edge_balance scenario, key=email, amount=R$3449.59
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$3449,59 para a chave email amanda.almeida852@yahoo.com.br
+  initial_state:
+    balance: 3449.67
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.08
+    amount: 3449.59
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0114
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=28163.68, available=21836.32)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Brother, ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 77691.64
+    daily_limit: 50000.0
+    daily_used: 28163.68
+  expected_final_state:
+    limit_queried: true
+    available_limit: 21836.32
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0115
+  name: PIX reversal outside window
+  description: Reversal of R$172.21 made 34h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero desfazer um PIX de R$172,21 feito anteontem
+  initial_state:
+    balance: 27779.01
+    last_transfer_hours_ago: 34
+    last_transfer_amount: 172.21
+    last_transfer_id: tx_4fbe8c64
+  expected_final_state:
+    reversal_executed: false
+    balance: 27779.01
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0116
+  name: PIX transfer edge_limit (email)
+  description: Synthetic PIX transfer - edge_limit scenario, key=email, amount=R$17343.14
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Preciso enviar R$17343,14 por PIX para camila.rodrigues264@hotmail.com
+  initial_state:
+    balance: 27343.14
+    daily_used: 32656.82
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 17343.14
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0117
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$1784.16
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 2 PIX: acho que 1323.73 pro emial thiago.souza785@outlook.com e
+      R$460,43 pro aleatoria 7dfd46bd89ef4028a53cfa721d1293af'
+  initial_state:
+    balance: 7199.23
+    daily_used: 1991.32
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 1784.16
+    balance: 5415.07
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0118
+  name: PIX transfer sufficient (email)
+  description: Synthetic PIX transfer - sufficient scenario, key=email, amount=R$18988.92
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: URGENTE! desculpa a demora, tava no mercado. Entao, Preciso enviar R$18988,92
+      por PIX para beatriz.lima889@uol.com.br
+  initial_state:
+    balance: 35371.71
+    daily_used: 19113.66
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 16382.79
+    amount: 18988.92
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0119
+  name: PIX transfer limit_exceeded (email)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=email, amount=R$26061.1
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$26061,10 pro PIX email larissa.carvalho139@gmail.com
+  initial_state:
+    balance: 36061.1
+    daily_used: 25616.56
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 36061.1
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0120
+  name: PIX transfer edge_balance (email)
+  description: Synthetic PIX transfer - edge_balance scenario, key=email, amount=R$34625.18
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Preciso enviar R$34625,18 por PIX para thiago.santos928@hotmail.com
+  initial_state:
+    balance: 34626.07
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.89
+    amount: 34625.18
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0121
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$6172.02
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 2 PIX: mais ou menos 1285.57 reais pro aleatoria 6c42f60d3b666752a656881b7faf226d
+      e R$4886,45 praa email joao.carvalho331@hotmail.com'
+  initial_state:
+    balance: 19835.4
+    daily_used: 5803.63
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 6172.02
+    balance: 13663.38
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0122
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=14528.09, available=35471.91)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quanto ainda posso transferir via PIX hoje?
+  initial_state:
+    balance: 78286.96
+    daily_limit: 50000.0
+    daily_used: 14528.09
+  expected_final_state:
+    limit_queried: true
+    available_limit: 35471.91
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0123
+  name: PIX reversal within window
+  description: Reversal of R$5524.93 made 2h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: URGENTE! fiz um PIX errado de R$5524,93 agora pouco, consigo estornar?
+  initial_state:
+    balance: 11959.62
+    last_transfer_hours_ago: 2
+    last_transfer_amount: 5524.93
+    last_transfer_id: tx_80d49f8b
+  expected_final_state:
+    reversal_executed: true
+    balance: 17484.55
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0124
+  name: PIX transfer sufficient (telefone)
+  description: Synthetic PIX transfer - sufficient scenario, key=telefone, amount=R$2279.43
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Prezado atendente, gostaria de solicitar faz um PIX de R$2279,43 pra
+      telefone +5521999106291
+  initial_state:
+    balance: 11877.84
+    daily_used: 22669.15
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 9598.41
+    amount: 2279.43
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0125
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=46766.15, available=3233.85)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quanto ainda posso transferir via PIX hoje?
+  initial_state:
+    balance: 90242.24
+    daily_limit: 50000.0
+    daily_used: 46766.15
+  expected_final_state:
+    limit_queried: true
+    available_limit: 3233.85
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0126
+  name: PIX transfer edge_limit (cpf)
+  description: Synthetic PIX transfer - edge_limit scenario, key=cpf, amount=R$25479.58
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Preciso enviar R$25479,58 por PIX para 242.153.535-59
+  initial_state:
+    balance: 35479.58
+    daily_used: 24519.67
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 25479.58
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0127
+  name: PIX reversal within window
+  description: Reversal of R$4384.73 made 8h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Fiz um PIX errado de R$4384,73 ontem, consigo estornar?
+  initial_state:
+    balance: 20469.12
+    last_transfer_hours_ago: 8
+    last_transfer_amount: 4384.73
+    last_transfer_id: tx_375034e3
+  expected_final_state:
+    reversal_executed: true
+    balance: 24853.85
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0128
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=6386.37, available=43613.63)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 92298.48
+    daily_limit: 50000.0
+    daily_used: 6386.37
+  expected_final_state:
+    limit_queried: true
+    available_limit: 43613.63
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0129
+  name: PIX reversal within window
+  description: Reversal of R$8318.58 made 6h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso pra ontem: errei o PIX de R$8318,58 de hoje cedo. Da pra cancelar?'
+  initial_state:
+    balance: 38658.35
+    last_transfer_hours_ago: 6
+    last_transfer_amount: 8318.58
+    last_transfer_id: tx_186e1e94
+  expected_final_state:
+    reversal_executed: true
+    balance: 46976.93
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0130
+  name: PIX reversal outside window
+  description: Reversal of R$7748.29 made 46h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Fiz um PIX errado de uns 7748.29 anteontem, consigo estornar?
+  initial_state:
+    balance: 37425.05
+    last_transfer_hours_ago: 46
+    last_transfer_amount: 7748.29
+    last_transfer_id: tx_9cfd42c5
+  expected_final_state:
+    reversal_executed: false
+    balance: 37425.05
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0131
+  name: PIX transfer edge_limit (telefone)
+  description: Synthetic PIX transfer - edge_limit scenario, key=telefone, amount=R$10229.72
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: URGENTE! transfere R$10229,72 via PIX para +5519999155708
+  initial_state:
+    balance: 20229.72
+    daily_used: 39770.12
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 10000.0
+    amount: 10229.72
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0132
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=34928.06, available=15071.94)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Preciso AGORA: to com pressa pq tenho reuniao daqui a pouco. Quero saber
+      meu limite de PIX restante'
+  initial_state:
+    balance: 46238.07
+    daily_limit: 50000.0
+    daily_used: 34928.06
+  expected_final_state:
+    limit_queried: true
+    available_limit: 15071.94
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0133
+  name: PIX transfer edge_balance (aleatoria)
+  description: Synthetic PIX transfer - edge_balance scenario, key=aleatoria, amount=R$21571.03
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Emergencia! pIX de R$21571,03 para aleatoria 2dca311b00b76e7252e0bb83989e8fce
+      por favor
+  initial_state:
+    balance: 21571.42
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.39
+    amount: 21571.03
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0134
+  name: PIX transfer limit_exceeded (email)
+  description: Synthetic PIX transfer - limit_exceeded scenario, key=email, amount=R$47128.85
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz isso JA: faz um PIX de uns 47128.85 pra email thiago.costa635@outlook.com'
+  initial_state:
+    balance: 57128.85
+    daily_used: 7585.63
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 57128.85
+    error_reason: daily_limit_exceeded
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - limit_exceeded
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0135
+  name: PIX reversal within window
+  description: Reversal of R$7097.83 made 12h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Errei o PIX de acho que 7097.83 de ontem. Da pra cancelar?
+  initial_state:
+    balance: 33873.47
+    last_transfer_hours_ago: 12
+    last_transfer_amount: 7097.83
+    last_transfer_id: tx_3e6cd12c
+  expected_final_state:
+    reversal_executed: true
+    balance: 40971.3
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0136
+  name: PIX reversal outside window
+  description: Reversal of R$2946.95 made 71h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: URGENTE! fiz um PIX errado de R$2946,95 faz uns dias, consigo estornar?
+  initial_state:
+    balance: 20685.01
+    last_transfer_hours_ago: 71
+    last_transfer_amount: 2946.95
+    last_transfer_id: tx_57ef68ce
+  expected_final_state:
+    reversal_executed: false
+    balance: 20685.01
+    error_reason: reversal_window_expired
+  allowed_tools:
+  - get_transaction_history
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - edge_case
+  - reversal_denied
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0137
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=16346.87, available=33653.13)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Pelo amor de Deus, quero saber meu limite de PIX restante
+  initial_state:
+    balance: 47790.84
+    daily_limit: 50000.0
+    daily_used: 16346.87
+  expected_final_state:
+    limit_queried: true
+    available_limit: 33653.13
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0138
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=22844.53, available=27155.47)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Qual meu limite de PIX disponivel hoje?
+  initial_state:
+    balance: 73965.29
+    daily_limit: 50000.0
+    daily_used: 22844.53
+  expected_final_state:
+    limit_queried: true
+    available_limit: 27155.47
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0139
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=35654.47, available=14345.53)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 64677.36
+    daily_limit: 50000.0
+    daily_used: 35654.47
+  expected_final_state:
+    limit_queried: true
+    available_limit: 14345.53
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0140
+  name: PIX transfer insufficient (cpf)
+  description: Synthetic PIX transfer - insufficient scenario, key=cpf, amount=R$31900.2
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Faz um PIX de R$31900,20 pra cpf 506.620.396-13
+  initial_state:
+    balance: 8349.78
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 8349.78
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0141
+  name: Multi-step PIX (3 transfers)
+  description: 3 sequential PIX transfers totaling R$6453.21
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 3 PIX: R$1799,70 para aleatoria 25cc155428bf49e4af094ec39ef9090e
+      e R$511,60 pro aleatoria 208a7583260e221fe37a50451f92e186 e R$4141,91 pro telfeone
+      +5511999465892'
+  initial_state:
+    balance: 10747.64
+    daily_used: 42629.86
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 3
+    total_transferred: 6453.21
+    balance: 4294.43
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0142
+  name: Multi-step PIX (2 transfers)
+  description: 2 sequential PIX transfers totaling R$5249.35
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 2 PIX: R$3571,51 para cpf 659.080.265-34 e R$1677,84 pro email amanda.costa989@gmail.com'
+  initial_state:
+    balance: 11519.69
+    daily_used: 29434.09
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 2
+    total_transferred: 5249.35
+    balance: 6270.34
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0143
+  name: PIX transfer insufficient (email)
+  description: Synthetic PIX transfer - insufficient scenario, key=email, amount=R$25763.95
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Ja tentei no app mas deu erro, entao: Transfere acho que 25763.95 via
+      PIX para maria.silva665@outlook.com'
+  initial_state:
+    balance: 15849.1
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 15849.1
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: hard
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0144
+  name: PIX transfer edge_balance (email)
+  description: Synthetic PIX transfer - edge_balance scenario, key=email, amount=R$10548.85
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Quero fazer um PIX de R$10548,85 para a chave email gustavo.santos582@uol.com.br
+  initial_state:
+    balance: 10549.23
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 0.38
+    amount: 10548.85
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0145
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$3612.59
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Faz 4 PIX: R$1162,39 para aleatoria ecfd9a7fad9d862c04120a57fdbde6b0
+      e R$454,69 para aleatoria 780c0e5079c3a157dfa5df36b7fca82f e R$1641,29 pro cpf
+      360.916.053-95 e R$354,22 pro cpf 186.253.759-18'
+  initial_state:
+    balance: 7431.88
+    daily_used: 40467.85
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 3612.59
+    balance: 3819.29
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0146
+  name: Multi-step PIX (4 transfers)
+  description: 4 sequential PIX transfers totaling R$7017.73
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: 'Solicito gentilmente que faz 4 PIX: R$726,44 pro email rafael.costa618@outlook.com
+      e R$280,99 para email gustavo.rodrigues81@outlook.com e R$3552,03 pro telefone
+      +5561992729013 e R$2458,27 para email joao.oliveira420@outlook.com'
+  initial_state:
+    balance: 23627.19
+    daily_used: 10961.83
+    pix_key_valid: true
+  expected_final_state:
+    transfers_executed: 4
+    total_transferred: 7017.73
+    balance: 16609.46
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - multi_step
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0147
+  name: PIX reversal within window
+  description: Reversal of R$9743.93 made 23h ago
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Fiz um PIX errado de R$9743,93 ontem, consigo estornar?
+  initial_state:
+    balance: 41150.86
+    last_transfer_hours_ago: 23
+    last_transfer_amount: 9743.93
+    last_transfer_id: tx_10be57ad
+  expected_final_state:
+    reversal_executed: true
+    balance: 50894.79
+  allowed_tools:
+  - get_transaction_history
+  - reverse_pix_transfer
+  - request_user_confirmation
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: high
+  business_criticality: financial
+  tags:
+  - happy_path
+  - reversal
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0148
+  name: PIX transfer insufficient (aleatoria)
+  description: Synthetic PIX transfer - insufficient scenario, key=aleatoria, amount=R$47970.53
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: URGENTE! quero fazer um PIX de R$47970,53 para a chave aleatoria 6f740589b1a134f67ea661813bfe0307
+  initial_state:
+    balance: 29626.84
+    daily_used: 0.0
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: false
+    balance: 29626.84
+    error_reason: insufficient_balance
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - edge_case
+  - insufficient_funds
+  difficulty: medium
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0149
+  name: PIX limit inquiry
+  description: Check remaining PIX limit (used=2249.81, available=47750.19)
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Ainda tenho limite pra fazer PIX?
+  initial_state:
+    balance: 97722.14
+    daily_limit: 50000.0
+    daily_used: 2249.81
+  expected_final_state:
+    limit_queried: true
+    available_limit: 47750.19
+  allowed_tools:
+  - check_pix_limits
+  - check_balance
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: low
+  business_criticality: operational
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'
+- task_id: SYN_PIX_0150
+  name: PIX transfer sufficient (telefone)
+  description: Synthetic PIX transfer - sufficient scenario, key=telefone, amount=R$22802.28
+  domain: pix_like
+  family: transactional_tools
+  source_type: synthetic_shadow
+  input_messages:
+  - role: user
+    content: Manda R$22802,28 pro PIX telefone +5561990376545
+  initial_state:
+    balance: 55769.1
+    daily_used: 1515.83
+    pix_key_valid: true
+  expected_final_state:
+    transfer_executed: true
+    balance: 32966.82
+    amount: 22802.28
+    confirmation_requested: true
+  allowed_tools:
+  - check_balance
+  - validate_pix_key
+  - check_pix_limits
+  - request_user_confirmation
+  - execute_pix_transfer
+  required_capabilities:
+  - tool_calling
+  expected_refusal_mode: none
+  severity: medium
+  business_criticality: financial
+  tags:
+  - happy_path
+  - basic_transfer
+  difficulty: easy
+  task_version: 1.0.0
+  metadata:
+    created_by: TransactionalGenerator
+    generator_model: deterministic_template
+    created_at: '2026-06-02T20:16:44.549492+00:00'

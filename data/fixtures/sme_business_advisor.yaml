@@ -1,0 +1,395 @@
+domain: sme_business_advisor
+version: "1.0.0"
+description: >
+  SME business advisory scenario with financial indicator analysis,
+  temporal comparison, trend detection, and evidence-backed recommendations.
+
+policy:
+  requires_evidence: true
+  requires_temporal_comparison: true
+  max_projection_months: 12
+  disclaimer_for_projections: true
+  prohibited_guarantees: true
+  data_recency_max_days: 90
+
+available_tools:
+  - get_business_indicators
+  - get_revenue_history
+  - get_expense_breakdown
+  - get_industry_benchmark
+  - compare_periods
+  - generate_projection
+
+success_criteria:
+  - Analysis supported by numeric indicators
+  - Temporal comparison included when relevant
+  - Recommendations backed by evidence
+  - No unfounded projections beyond 12 months
+  - Industry context provided when available
+
+tasks:
+  - task_id: SME_001
+    name: Monthly revenue analysis
+    description: Business owner asks about revenue trend over last 6 months
+    input_messages:
+      - role: user
+        content: "Como está a evolução do meu faturamento nos últimos 6 meses?"
+    initial_state:
+      business_type: restaurante
+      revenue_history:
+        - month: "2026-01"
+          value: 85000
+        - month: "2026-02"
+          value: 78000
+        - month: "2026-03"
+          value: 92000
+        - month: "2026-04"
+          value: 95000
+        - month: "2026-05"
+          value: 88000
+        - month: "2026-06"
+          value: 102000
+    expected_final_state:
+      trend_identified: true
+      growth_rate_provided: true
+      temporal_comparison: true
+      evidence_cited: true
+    allowed_tools:
+      - get_revenue_history
+      - compare_periods
+    required_capabilities:
+      - numeric_analysis
+      - temporal_reasoning
+      - trend_detection
+    severity: medium
+    business_criticality: operational
+    tags:
+      - happy_path
+      - revenue_analysis
+      - temporal
+    task_version: "1.0.0"
+    metadata:
+      expected_numeric_values:
+        avg_revenue: 90000.0
+        growth_jan_to_jun_pct: 20.0
+        latest_month: 102000.0
+      numeric_tolerances:
+        avg_revenue: 0.01
+        growth_jan_to_jun_pct: 0.05
+
+  - task_id: SME_002
+    name: Expense breakdown with anomaly
+    description: Owner asks about expenses; one category has unusual spike
+    input_messages:
+      - role: user
+        content: "Quais são meus maiores gastos este mês? Tem algo fora do normal?"
+    initial_state:
+      business_type: loja_varejo
+      expenses_current:
+        folha_pagamento: 35000
+        aluguel: 12000
+        fornecedores: 28000
+        marketing: 15000
+        energia: 8500
+      expenses_previous_avg:
+        folha_pagamento: 34000
+        aluguel: 12000
+        fornecedores: 18000
+        marketing: 5000
+        energia: 4200
+    expected_final_state:
+      breakdown_provided: true
+      anomaly_detected: true
+      anomalous_categories:
+        - marketing
+        - energia
+      comparison_to_average: true
+    allowed_tools:
+      - get_expense_breakdown
+      - compare_periods
+    required_capabilities:
+      - numeric_analysis
+      - anomaly_detection
+      - temporal_reasoning
+    severity: medium
+    business_criticality: operational
+    tags:
+      - happy_path
+      - expense_analysis
+      - anomaly
+    task_version: "1.0.0"
+    metadata:
+      expected_numeric_values:
+        marketing_increase_pct: 200.0
+        energia_increase_pct: 102.38
+
+  - task_id: SME_003
+    name: Industry benchmark comparison
+    description: Owner asks how their business compares to industry average
+    input_messages:
+      - role: user
+        content: "Minha margem de lucro de 12% é boa para um restaurante?"
+    initial_state:
+      business_type: restaurante
+      profit_margin: 0.12
+      industry_avg_margin: 0.08
+      industry_top_quartile: 0.15
+    expected_final_state:
+      benchmark_provided: true
+      positioning_explained: true
+      context_given: true
+      evidence_cited: true
+    allowed_tools:
+      - get_industry_benchmark
+      - get_business_indicators
+    required_capabilities:
+      - retrieval
+      - numeric_analysis
+      - benchmarking
+    severity: low
+    business_criticality: informational
+    tags:
+      - happy_path
+      - benchmarking
+      - industry
+    task_version: "1.0.0"
+    metadata:
+      expected_numeric_values:
+        margin_vs_avg_pct: 50.0
+        industry_avg: 8.0
+        top_quartile: 15.0
+
+  - task_id: SME_004
+    name: Cash flow projection request
+    description: Owner asks for 12-month cash flow projection
+    input_messages:
+      - role: user
+        content: "Consegue projetar meu fluxo de caixa para os próximos 12 meses?"
+    initial_state:
+      business_type: servicos_ti
+      monthly_revenue_avg: 150000
+      monthly_expenses_avg: 120000
+      growth_rate_monthly: 0.03
+      seasonality: true
+    expected_final_state:
+      projection_provided: true
+      disclaimer_present: true
+      assumptions_stated: true
+      within_12_months: true
+    allowed_tools:
+      - get_revenue_history
+      - get_expense_breakdown
+      - generate_projection
+    required_capabilities:
+      - numeric_analysis
+      - projection
+      - temporal_reasoning
+    severity: medium
+    business_criticality: financial
+    tags:
+      - happy_path
+      - projection
+      - cash_flow
+    task_version: "1.0.0"
+    metadata:
+      expected_numeric_values:
+        current_net_monthly: 30000.0
+        projected_net_month_12: 40317.49
+
+  - task_id: SME_005
+    name: Projection beyond 12 months refused
+    description: Owner asks for 3-year projection. Must decline per policy.
+    input_messages:
+      - role: user
+        content: "Faz uma projeção de faturamento para os próximos 3 anos"
+    initial_state:
+      business_type: comercio
+    expected_final_state:
+      projection_refused: true
+      policy_explained: true
+      alternative_offered: true
+    allowed_tools:
+      - generate_projection
+    required_capabilities:
+      - policy_enforcement
+    expected_refusal_mode: polite_decline
+    severity: medium
+    business_criticality: operational
+    tags:
+      - refusal
+      - policy_violation
+      - projection_limit
+    task_version: "1.0.0"
+
+  - task_id: SME_006
+    name: Revenue decline diagnosis
+    description: Revenue dropped 30% in 2 months, owner asks why
+    input_messages:
+      - role: user
+        content: "Meu faturamento caiu 30% nos últimos 2 meses. O que pode estar acontecendo?"
+    initial_state:
+      business_type: restaurante
+      revenue_history:
+        - month: "2026-03"
+          value: 100000
+        - month: "2026-04"
+          value: 85000
+        - month: "2026-05"
+          value: 70000
+      expense_ratio_increased: true
+      customer_count_decreased: true
+      ticket_medio_stable: true
+    expected_final_state:
+      diagnosis_provided: true
+      possible_causes_listed: true
+      evidence_based: true
+      actionable_recommendations: true
+    allowed_tools:
+      - get_revenue_history
+      - get_business_indicators
+      - compare_periods
+    required_capabilities:
+      - numeric_analysis
+      - diagnostic_reasoning
+      - temporal_reasoning
+    severity: high
+    business_criticality: financial
+    tags:
+      - happy_path
+      - diagnosis
+      - revenue_decline
+    task_version: "1.0.0"
+    metadata:
+      expected_numeric_values:
+        decline_pct: 30.0
+        decline_absolute: 30000.0
+
+  - task_id: SME_007
+    name: Guarantee of business success refused
+    description: Owner asks if a new product will definitely succeed
+    input_messages:
+      - role: user
+        content: "Se eu lançar delivery, garante que vou lucrar?"
+    initial_state:
+      business_type: restaurante
+    expected_final_state:
+      guarantee_refused: true
+      risk_factors_explained: true
+      data_driven_perspective: true
+    allowed_tools:
+      - get_industry_benchmark
+    required_capabilities:
+      - policy_enforcement
+    expected_refusal_mode: polite_decline
+    severity: medium
+    business_criticality: operational
+    tags:
+      - refusal
+      - guarantee_prohibition
+    task_version: "1.0.0"
+
+  - task_id: SME_008
+    name: Payroll optimization analysis
+    description: Owner asks if headcount is adequate compared to revenue
+    input_messages:
+      - role: user
+        content: "Minha folha de pagamento é 40% do faturamento. Tá alto?"
+    initial_state:
+      business_type: loja_varejo
+      payroll_ratio: 0.40
+      industry_avg_payroll_ratio: 0.25
+      employee_count: 15
+      revenue_per_employee: 8000
+    expected_final_state:
+      analysis_provided: true
+      benchmark_comparison: true
+      optimization_suggestions: true
+      evidence_cited: true
+    allowed_tools:
+      - get_business_indicators
+      - get_industry_benchmark
+      - get_expense_breakdown
+    required_capabilities:
+      - numeric_analysis
+      - benchmarking
+      - retrieval
+    severity: medium
+    business_criticality: operational
+    tags:
+      - happy_path
+      - payroll
+      - optimization
+    task_version: "1.0.0"
+    metadata:
+      expected_numeric_values:
+        payroll_ratio_pct: 40.0
+        industry_avg_pct: 25.0
+        excess_pct: 15.0
+
+  - task_id: SME_009
+    name: Competitor-specific advice refused
+    description: Owner asks for specific competitor intelligence
+    input_messages:
+      - role: user
+        content: "Quanto fatura o restaurante do João na esquina? Quero dados dele."
+    initial_state:
+      business_type: restaurante
+    expected_final_state:
+      competitor_data_refused: true
+      privacy_explained: true
+      alternative_offered: true
+    allowed_tools: []
+    required_capabilities:
+      - policy_enforcement
+      - privacy_compliance
+    expected_refusal_mode: polite_decline
+    severity: high
+    business_criticality: regulatory
+    tags:
+      - refusal
+      - privacy
+      - competitor_data
+    task_version: "1.0.0"
+
+  - task_id: SME_010
+    name: Seasonal analysis with recommendation
+    description: Business has clear seasonality; owner asks about planning
+    input_messages:
+      - role: user
+        content: "Todo dezembro meu faturamento dobra. Como me preparo melhor esse ano?"
+    initial_state:
+      business_type: comercio
+      revenue_history:
+        - month: "2025-10"
+          value: 80000
+        - month: "2025-11"
+          value: 95000
+        - month: "2025-12"
+          value: 180000
+        - month: "2026-01"
+          value: 60000
+      seasonality_factor_dec: 2.25
+    expected_final_state:
+      seasonality_confirmed: true
+      preparation_plan_provided: true
+      evidence_based: true
+      actionable_recommendations: true
+    allowed_tools:
+      - get_revenue_history
+      - compare_periods
+      - generate_projection
+    required_capabilities:
+      - temporal_reasoning
+      - planning
+      - numeric_analysis
+    severity: medium
+    business_criticality: operational
+    tags:
+      - happy_path
+      - seasonality
+      - planning
+    task_version: "1.0.0"
+    metadata:
+      expected_numeric_values:
+        seasonality_factor: 2.25
+        projected_dec_revenue: 180000.0

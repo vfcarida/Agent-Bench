@@ -1,0 +1,28 @@
+systems:
+  - system_id: rag_basic_gpt4_sme
+    architecture: rag_basic
+    model: gpt-4o
+    tools:
+      - get_business_indicators
+      - get_revenue_history
+      - get_expense_breakdown
+      - get_industry_benchmark
+      - compare_periods
+      - generate_projection
+    retrieval: stub_sme_retriever
+    memory: false
+    max_steps: 8
+
+  - system_id: planner_executor_claude_sme
+    architecture: planner_executor
+    model: claude-sonnet-4-20250514
+    tools:
+      - get_business_indicators
+      - get_revenue_history
+      - get_expense_breakdown
+      - get_industry_benchmark
+      - compare_periods
+      - generate_projection
+    retrieval: stub_sme_retriever
+    memory: true
+    max_steps: 12

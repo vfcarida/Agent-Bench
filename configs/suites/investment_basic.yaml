@@ -1,0 +1,13 @@
+suite_id: investment_basic_v1
+name: "Investment Advisor Basic Suite"
+version: "1.0.0"
+description: "Benchmark suite for investment advisory with RAG, suitability, and numeric accuracy"
+domains:
+  - investment_advisor
+systems:
+  - rag_basic_gpt4
+  - rag_hybrid_claude
+repeat_n: 3
+seed: 42
+weighting_profile: advisory_regulated
+timeout_ms: 45000

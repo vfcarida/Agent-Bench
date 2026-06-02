@@ -1,0 +1,36 @@
+systems:
+  - system_id: tool_calling_reactive_gpt4_cyber
+    architecture: tool_calling_reactive
+    model: gpt-4o
+    tools:
+      - check_firewall_rules
+      - query_siem_logs
+      - scan_vulnerability_internal
+      - check_certificate_expiry
+      - verify_patch_status
+      - isolate_endpoint
+      - escalate_to_soc
+      - create_incident_ticket
+      - check_dns_records
+      - verify_access_permissions
+    retrieval: null
+    memory: false
+    max_steps: 8
+
+  - system_id: planner_executor_claude_cyber
+    architecture: planner_executor
+    model: claude-sonnet-4-20250514
+    tools:
+      - check_firewall_rules
+      - query_siem_logs
+      - scan_vulnerability_internal
+      - check_certificate_expiry
+      - verify_patch_status
+      - isolate_endpoint
+      - escalate_to_soc
+      - create_incident_ticket
+      - check_dns_records
+      - verify_access_permissions
+    retrieval: null
+    memory: true
+    max_steps: 10

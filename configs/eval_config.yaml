@@ -1,0 +1,26 @@
+sampling:
+  smoke_per_family: 8
+  gold_dev_per_family: 25
+  gold_holdout_per_family: 25
+  synthetic_shadow_per_family: 150
+  adversarial_per_category: 20
+
+families:
+  - transactional_tools
+  - knowledge_rag_reasoning
+  - business_long_horizon
+  - security_guardrails
+
+splits:
+  - dev
+  - holdout
+  - calibration
+  - regression
+  - smoke
+
+source_types:
+  - human_gold
+  - synthetic_shadow
+  - synthetic_candidate
+  - adversarial
+  - calibration

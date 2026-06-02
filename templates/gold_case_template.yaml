@@ -1,0 +1,145 @@
+# =============================================================================
+# Template: Caso de Eval Gold (Schema v2.0)
+# Domínio: PIX WhatsApp (exemplo)
+# =============================================================================
+
+# Identificador único do caso (UUID v4)
+case_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+# Versão do schema
+version: "2.0"
+
+# Domínio ao qual este caso pertence
+domain: "pix_whatsapp"
+
+# Split de dados (dev | holdout | smoke | regression | calibration)
+split: "dev"
+
+# Tags para filtragem e organização
+tags:
+  - "happy_path"
+  - "pix_transfer"
+  - "chave_cpf"
+
+# --- INPUT: o que o agente recebe ---
+input:
+  # Mensagem do usuário (linguagem natural, como viria no WhatsApp)
+  user_message: "Quero fazer um pix de 150 reais pro João, CPF 123.456.789-00"
+
+  # Contexto da conversa (turns anteriores, se houver)
+  conversation_history:
+    - role: "assistant"
+      content: "Olá! Como posso ajudar?"
+    - role: "user"
+      content: "Quero fazer um pix de 150 reais pro João, CPF 123.456.789-00"
+
+  # Estado inicial do sistema/sessão antes da interação
+  initial_state:
+    session:
+      authenticated: true
+      user_id: "USR-999888"
+      account_id: "ACC-112233"
+      balance: 500.00
+      daily_pix_limit: 1000.00
+      daily_pix_used: 200.00
+    context:
+      channel: "whatsapp"
+      device: "mobile"
+
+# --- EXPECTED OUTCOME: o que o agente deve produzir ---
+expected_outcome:
+  # Tipo de verificação: exact | contains | semantic | structured
+  type: "contains"
+
+  # Para type=contains: textos que DEVEM estar na resposta
+  must_include:
+    - "R$ 150"
+    - "João"
+    - "confirmação"
+
+  # Textos que NÃO devem aparecer
+  must_not_include:
+    - "erro"
+    - "não foi possível"
+    - "saldo insuficiente"
+
+# --- EXPECTED TOOL CALLS: tools que o agente deve invocar ---
+expected_tool_calls:
+  - tool_name: "resolve_pix_key"
+    args:
+      key_type: "cpf"
+      key_value: "12345678900"
+    # Ordem importa? Se true, esta call deve vir antes da próxima
+    ordered: true
+
+  - tool_name: "initiate_pix_transfer"
+    args:
+      amount: 150.00
+      destination_key: "12345678900"
+      destination_key_type: "cpf"
+    # Matchers para args dinâmicos
+    arg_matchers:
+      transaction_id: "any_uuid"
+
+# --- EXPECTED STATE CHANGES: mutações no estado ---
+expected_state_changes:
+  - field: "session.balance"
+    operation: "decrease_by"
+    value: 150.00
+
+  - field: "session.daily_pix_used"
+    operation: "increase_by"
+    value: 150.00
+
+  - field: "session.last_transaction.type"
+    operation: "equals"
+    value: "pix_out"
+
+  - field: "session.last_transaction.amount"
+    operation: "equals"
+    value: 150.00
+
+  - field: "session.last_transaction.status"
+    operation: "equals"
+    value: "pending_confirmation"
+
+# --- GRADING: como avaliar ---
+grading_strategy: "composite"
+
+grading_config:
+  components:
+    - strategy: "tool_match"
+      weight: 0.4
+      config:
+        check_args: true
+        check_order: true
+    - strategy: "state_check"
+      weight: 0.4
+    - strategy: "deterministic"
+      weight: 0.2
+      config:
+        check: "contains"
+
+# --- METADATA: rastreabilidade ---
+metadata:
+  source_type: "human_gold"
+  created_by: "maria.silva"
+  created_at: "2026-04-10T14:30:00Z"
+  reviewed_by:
+    - "joao.santos"
+    - "ana.oliveira"
+  reviewed_at: "2026-04-12T09:00:00Z"
+  promoted_at: "2026-04-12T09:00:00Z"
+  inter_annotator_agreement: 1.0
+  notes: "Caso base para transferência PIX por CPF. Happy path padrão."
+
+  # Se derivado de caso sintético
+  # promoted_from: "synthetic_candidate"
+  # original_synthetic_id: "syn-abc123"
+
+  # Se gerado sinteticamente (não aplicável aqui, mas para referência)
+  # generation_config:
+  #   model: "gpt-4o"
+  #   temperature: 0.7
+  #   seed: 42
+  #   prompt_template: "pix_transfer_v2"

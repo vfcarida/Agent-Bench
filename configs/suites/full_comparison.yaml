@@ -1,0 +1,16 @@
+suite_id: full_comparison_v1
+name: "Full System Comparison Suite"
+version: "1.0.0"
+description: "Cross-domain comparison of all systems"
+domains:
+  - pix_assist
+  - investment_advisor
+systems:
+  - prompt_only_gpt4
+  - tool_calling_reactive_gpt4
+  - rag_basic_gpt4
+  - planner_executor_claude
+repeat_n: 5
+seed: 42
+weighting_profile: transactional_high_risk
+timeout_ms: 60000

@@ -1,0 +1,13 @@
+suite_id: pix_basic_v1
+name: "PIX Assist Basic Suite"
+version: "1.0.0"
+description: "Basic benchmark suite for PIX transactional domain"
+domains:
+  - pix_assist
+systems:
+  - prompt_only_gpt4
+  - tool_calling_reactive_gpt4
+repeat_n: 3
+seed: 42
+weighting_profile: transactional_high_risk
+timeout_ms: 30000

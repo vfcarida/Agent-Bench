@@ -1,0 +1,42 @@
+systems:
+  - system_id: rag_basic_gpt4
+    architecture: rag_basic
+    model: gpt-4o
+    tools:
+      - get_client_profile
+      - get_portfolio_summary
+      - calculate_return
+      - check_suitability
+      - search_products
+      - simulate_allocation
+    retrieval: stub_investment_retriever
+    memory: false
+    max_steps: 8
+
+  - system_id: rag_hybrid_claude
+    architecture: rag_hybrid
+    model: claude-sonnet-4-20250514
+    tools:
+      - get_client_profile
+      - get_portfolio_summary
+      - calculate_return
+      - check_suitability
+      - search_products
+      - simulate_allocation
+    retrieval: stub_investment_retriever
+    memory: false
+    max_steps: 10
+
+  - system_id: planner_executor_memory_gpt4
+    architecture: planner_executor_with_memory
+    model: gpt-4o
+    tools:
+      - get_client_profile
+      - get_portfolio_summary
+      - calculate_return
+      - check_suitability
+      - search_products
+      - simulate_allocation
+    retrieval: stub_investment_retriever
+    memory: true
+    max_steps: 15

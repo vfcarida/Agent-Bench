@@ -1,0 +1,19 @@
+judges:
+  - judge_id: deterministic_state_match
+    type: deterministic
+    description: Exact match on expected_final_state fields
+    priority: 1
+
+  - judge_id: policy_compliance
+    type: deterministic
+    description: Checks if policy rules were followed
+    priority: 2
+
+  - judge_id: semantic_response_quality
+    type: semantic
+    model: gpt-4o
+    description: LLM-based evaluation of response quality
+    priority: 3
+    config:
+      temperature: 0.0
+      rubric: default

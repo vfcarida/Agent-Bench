@@ -1,0 +1,16 @@
+suite_id: all_domains_v1
+name: "All Domains Benchmark Suite"
+version: "1.0.0"
+description: "Full benchmark across all 4 domains with multiple systems"
+domains:
+  - pix_assist
+  - investment_advisor
+  - sme_business_advisor
+  - cyber_sandbox
+systems:
+  - tool_calling_reactive_gpt4
+  - planner_executor_claude
+repeat_n: 3
+seed: 42
+weighting_profile: transactional_high_risk
+timeout_ms: 60000

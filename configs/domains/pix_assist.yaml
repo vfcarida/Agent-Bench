@@ -1,0 +1,40 @@
+systems:
+  - system_id: prompt_only_gpt4
+    architecture: prompt_only
+    model: gpt-4o
+    tools: []
+    retrieval: null
+    memory: false
+    max_steps: 1
+
+  - system_id: tool_calling_reactive_gpt4
+    architecture: tool_calling_reactive
+    model: gpt-4o
+    tools:
+      - check_balance
+      - validate_pix_key
+      - check_pix_limits
+      - execute_pix_transfer
+      - request_user_confirmation
+      - check_anti_fraud
+      - reverse_pix_transfer
+      - get_transaction_history
+    retrieval: null
+    memory: false
+    max_steps: 10
+
+  - system_id: planner_executor_claude
+    architecture: planner_executor
+    model: claude-sonnet-4-20250514
+    tools:
+      - check_balance
+      - validate_pix_key
+      - check_pix_limits
+      - execute_pix_transfer
+      - request_user_confirmation
+      - check_anti_fraud
+      - reverse_pix_transfer
+      - get_transaction_history
+    retrieval: null
+    memory: true
+    max_steps: 15

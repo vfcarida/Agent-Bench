@@ -1,0 +1,22 @@
+models:
+  - model_id: gpt-4o
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    parameters:
+      temperature: 0.0
+      max_tokens: 4096
+
+  - model_id: claude-sonnet-4-20250514
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    parameters:
+      temperature: 0.0
+      max_tokens: 4096
+
+  - model_id: internal-slm-v1
+    provider: internal
+    endpoint: "${INTERNAL_MODEL_ENDPOINT}"
+    api_key_env: INTERNAL_MODEL_API_KEY
+    parameters:
+      temperature: 0.0
+      max_tokens: 2048
