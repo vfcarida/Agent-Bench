@@ -39,6 +39,13 @@ class Task:
     required_capabilities: list[str] = field(default_factory=list)
     expected_refusal_mode: RefusalMode = RefusalMode.NONE
     gold_references: list[str] = field(default_factory=list)
+    # FinanceBench-inspired: explicit evidence strings for grounding verification
+    # Each entry: {"claim": "...", "evidence": "...", "source_doc_id": "..."}
+    evidence_strings: list[dict[str, str]] = field(default_factory=list)
+    # FINESSE-Bench-inspired: answer format for type-specific evaluation
+    answer_format: str = "free_form"
+    # BTB-inspired: expected deliverable types for multi-output evaluation
+    expected_deliverables: list[str] = field(default_factory=list)
     severity: Severity = Severity.MEDIUM
     business_criticality: BusinessCriticality = BusinessCriticality.OPERATIONAL
     tags: list[str] = field(default_factory=list)

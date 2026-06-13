@@ -61,6 +61,16 @@ VALID_TAGS = {
     "allocation", "multi_product", "conservative", "regulatory",
 }
 
+# Valid answer formats (FINESSE-Bench-inspired)
+VALID_ANSWER_FORMATS = {
+    "mcq", "naq", "saq", "case", "free_form", "tool_use",
+}
+
+# Valid deliverable types (BTB-inspired)
+VALID_DELIVERABLE_TYPES = {
+    "text", "structured_data", "calculation", "recommendation", "report",
+}
+
 
 def validate_dataset(path: Path) -> ValidationResult:
     """Validate a domain dataset YAML file."""
@@ -177,6 +187,41 @@ def validate_dataset(path: Path) -> ValidationResult:
                 ValidationIssue("warning", task_id, "expected_final_state",
                                 "Happy path task missing expected_final_state")
             )
+
+        # Validate answer_format (FINESSE-Bench-inspired)
+        answer_format = task.get("answer_format", "free_form")
+        if answer_format not in VALID_ANSWER_FORMATS:
+            result.issues.append(
+                ValidationIssue("error", task_id, "answer_format",
+                                f"Invalid answer format: {answer_format}. "
+                                f"Valid: {VALID_ANSWER_FORMATS}")
+            )
+            result.valid = False
+
+        # Validate evidence_strings structure (FinanceBench-inspired)
+        evidence_strings = task.get("evidence_strings", [])
+        if evidence_strings:
+            for idx, es in enumerate(evidence_strings):
+                if not isinstance(es, dict):
+                    result.issues.append(
+                        ValidationIssue("error", task_id, "evidence_strings",
+                                        f"Entry {idx} must be a dict with 'claim' and 'evidence'")
+                    )
+                    result.valid = False
+                elif "claim" not in es:
+                    result.issues.append(
+                        ValidationIssue("warning", task_id, "evidence_strings",
+                                        f"Entry {idx} missing 'claim' field")
+                    )
+
+        # Validate expected_deliverables (BTB-inspired)
+        deliverables = task.get("expected_deliverables", [])
+        for dt in deliverables:
+            if dt not in VALID_DELIVERABLE_TYPES:
+                result.issues.append(
+                    ValidationIssue("warning", task_id, "expected_deliverables",
+                                    f"Unknown deliverable type: {dt}")
+                )
 
     return result
 

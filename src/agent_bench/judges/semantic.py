@@ -1,4 +1,9 @@
-"""Semantic judge: LLM-as-judge for qualitative evaluation."""
+"""Semantic judge: LLM-as-judge for qualitative evaluation.
+
+Enhanced with FINESSE-Bench-inspired (arXiv:2605.15482) unified prompt
+templates per answer format type. Each format (MCQ, NAQ, SAQ, CASE,
+FREE_FORM) has a specialized template for reproducible evaluation.
+"""
 
 from typing import Any
 
@@ -6,6 +11,8 @@ from agent_bench.core.adapters import JudgeVerdict, ModelAdapter
 from agent_bench.core.artifacts import TraceEvent
 from agent_bench.core.scenarios import Task
 
+
+# ---------- FINESSE-Bench-inspired: format-specific system prompts ----------
 
 _JUDGE_SYSTEM_PROMPT = """You are an expert evaluator for a banking AI system benchmark.
 Your task is to evaluate the quality of an AI system's response to a customer request.
@@ -29,11 +36,95 @@ Respond in JSON format:
     "reasoning": "<brief explanation>"
 }"""
 
+_MCQ_SYSTEM_PROMPT = """You are an expert evaluator for multiple-choice question answering.
+Your task is to determine if the model selected the correct answer option.
+
+Score as follows:
+- 1.0 if the correct option was selected
+- 0.0 if an incorrect option was selected
+- 0.5 if the answer is ambiguous or partially correct
+
+Respond in JSON format:
+{
+    "correctness": <0-1>,
+    "selected_option": "<the option the model selected>",
+    "correct_option": "<the expected correct option>",
+    "aggregate": <0-1>,
+    "reasoning": "<brief explanation>"
+}"""
+
+_NAQ_SYSTEM_PROMPT = """You are an expert evaluator for numerical answer questions.
+Your task is to determine if the model's numerical answer is correct.
+
+Score as follows:
+- 1.0 if the answer is exactly correct or within acceptable tolerance (1%)
+- 0.5-0.9 if the answer is approximately correct but with minor errors
+- 0.0 if the answer is significantly wrong
+
+Consider: correct units, decimal precision, and calculation methodology.
+
+Respond in JSON format:
+{
+    "correctness": <0-1>,
+    "expected_value": "<expected numeric answer>",
+    "actual_value": "<model's numeric answer>",
+    "tolerance_met": <true/false>,
+    "aggregate": <0-1>,
+    "reasoning": "<brief explanation>"
+}"""
+
+_SAQ_SYSTEM_PROMPT = """You are an expert evaluator for short-answer questions in finance.
+Your task is to determine if the model's short answer captures the key points.
+
+Evaluate on these dimensions:
+1. Correctness: Is the core answer factually correct?
+2. Completeness: Are all key points mentioned?
+3. Precision: Is the answer concise without unnecessary information?
+
+Respond in JSON format:
+{
+    "correctness": <0-1>,
+    "completeness": <0-1>,
+    "precision": <0-1>,
+    "aggregate": <0-1>,
+    "reasoning": "<brief explanation>"
+}"""
+
+_CASE_SYSTEM_PROMPT = """You are an expert evaluator for case-study linked questions.
+The model answered a question based on a financial case study.
+
+Evaluate on these dimensions:
+1. Correctness: Is the analysis factually and methodologically correct?
+2. Case Alignment: Does the answer properly reference and use case data?
+3. Reasoning Quality: Is the multi-step reasoning sound?
+4. Completeness: Are all aspects of the question addressed?
+
+Respond in JSON format:
+{
+    "correctness": <0-1>,
+    "case_alignment": <0-1>,
+    "reasoning_quality": <0-1>,
+    "completeness": <0-1>,
+    "aggregate": <0-1>,
+    "reasoning": "<brief explanation>"
+}"""
+
+# Map answer_format to specialized system prompts
+_FORMAT_PROMPTS: dict[str, str] = {
+    "mcq": _MCQ_SYSTEM_PROMPT,
+    "naq": _NAQ_SYSTEM_PROMPT,
+    "saq": _SAQ_SYSTEM_PROMPT,
+    "case": _CASE_SYSTEM_PROMPT,
+    "free_form": _JUDGE_SYSTEM_PROMPT,
+    "tool_use": _JUDGE_SYSTEM_PROMPT,
+}
+
 
 _JUDGE_USER_TEMPLATE = """## Task
 - Domain: {domain}
 - Description: {description}
 - Required capabilities: {capabilities}
+- Answer format: {answer_format}
 
 ## Customer Input
 {user_input}
@@ -77,10 +168,15 @@ class SemanticJudge:
         expected = _format_expected(task)
         gold = "\n".join(task.gold_references) if task.gold_references else "None"
 
+        # FINESSE-Bench: select format-specific system prompt
+        answer_format = getattr(task, "answer_format", "free_form")
+        system_prompt = _FORMAT_PROMPTS.get(answer_format, _JUDGE_SYSTEM_PROMPT)
+
         prompt = _JUDGE_USER_TEMPLATE.format(
             domain=task.domain,
             description=task.description,
             capabilities=", ".join(task.required_capabilities),
+            answer_format=answer_format,
             user_input=user_input,
             response=response,
             expected_behavior=expected,
@@ -88,7 +184,7 @@ class SemanticJudge:
         )
 
         messages = [
-            {"role": "system", "content": _JUDGE_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
 

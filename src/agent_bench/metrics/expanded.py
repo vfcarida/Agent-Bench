@@ -8,7 +8,11 @@ from agent_bench.graders.state_grader import GradeResult
 def compute_confidence_interval(
     values: list[float], confidence: float = 0.95
 ) -> tuple[float, float, float]:
-    """Returns (mean, lower, upper) using normal approximation."""
+    """Returns (mean, lower, upper) using normal approximation.
+
+    NOTE: For more accurate intervals, especially with small samples,
+    use compute_bootstrap_ci() instead (FINESSE-Bench style).
+    """
     n = len(values)
     if n == 0:
         return (0.0, 0.0, 0.0)
@@ -25,6 +29,95 @@ def compute_confidence_interval(
 
     margin = z * std_err
     return (mean, mean - margin, mean + margin)
+
+
+def compute_bootstrap_ci(
+    values: list[float],
+    n_bootstrap: int = 10_000,
+    confidence: float = 0.95,
+    seed: int = 42,
+) -> tuple[float, float, float]:
+    """Returns (mean, lower, upper) using bootstrap resampling.
+
+    Inspired by FINESSE-Bench (arXiv:2605.15482, Section 5.4):
+    95% confidence intervals computed using bootstrap. For aggregated
+    benchmark groups, stratified bootstrap with weights proportional
+    to dataset size is used.
+
+    This is more accurate than normal approximation for:
+    - Small sample sizes
+    - Non-normal distributions
+    - Binary outcomes (pass/fail)
+    """
+    import random
+
+    n = len(values)
+    if n == 0:
+        return (0.0, 0.0, 0.0)
+    if n == 1:
+        return (values[0], values[0], values[0])
+
+    rng = random.Random(seed)
+    mean = sum(values) / n
+
+    bootstrap_means: list[float] = []
+    for _ in range(n_bootstrap):
+        sample = rng.choices(values, k=n)
+        bootstrap_means.append(sum(sample) / n)
+
+    bootstrap_means.sort()
+    alpha = 1 - confidence
+    lower_idx = max(0, int(alpha / 2 * n_bootstrap))
+    upper_idx = min(n_bootstrap - 1, int((1 - alpha / 2) * n_bootstrap))
+
+    return (mean, bootstrap_means[lower_idx], bootstrap_means[upper_idx])
+
+
+def compute_stratified_bootstrap_ci(
+    group_values: dict[str, list[float]],
+    n_bootstrap: int = 10_000,
+    confidence: float = 0.95,
+    seed: int = 42,
+) -> tuple[float, float, float]:
+    """Stratified bootstrap CI with weights proportional to group size.
+
+    FINESSE-Bench Section 5.4: for aggregated benchmark groups,
+    use stratified bootstrap with weights proportional to dataset size.
+
+    Args:
+        group_values: Mapping from group/dataset name to scores
+    """
+    import random
+
+    all_values = []
+    group_weights: dict[str, float] = {}
+    total = sum(len(v) for v in group_values.values())
+
+    if total == 0:
+        return (0.0, 0.0, 0.0)
+
+    for group, vals in group_values.items():
+        all_values.extend(vals)
+        group_weights[group] = len(vals) / total
+
+    mean = sum(all_values) / total
+    rng = random.Random(seed)
+
+    bootstrap_means: list[float] = []
+    for _ in range(n_bootstrap):
+        boot_mean = 0.0
+        for group, vals in group_values.items():
+            if vals:
+                sample = rng.choices(vals, k=len(vals))
+                boot_mean += (sum(sample) / len(sample)) * group_weights[group]
+        bootstrap_means.append(boot_mean)
+
+    bootstrap_means.sort()
+    alpha = 1 - confidence
+    lower_idx = max(0, int(alpha / 2 * n_bootstrap))
+    upper_idx = min(n_bootstrap - 1, int((1 - alpha / 2) * n_bootstrap))
+
+    return (mean, bootstrap_means[lower_idx], bootstrap_means[upper_idx])
 
 
 def compute_tool_call_precision(expected_calls: list[Any], actual_calls: list[Any]) -> float:

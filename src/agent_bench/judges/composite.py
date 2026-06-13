@@ -1,4 +1,7 @@
-"""Composite judge: orchestrates multiple judges with priority."""
+"""Composite judge: orchestrates multiple judges with priority.
+
+Enhanced with BTB-inspired cross-artifact consistency checking (step 4).
+"""
 
 from typing import Any
 
@@ -8,6 +11,7 @@ from agent_bench.core.scenarios import Task
 from agent_bench.judges.deterministic import DeterministicJudge
 from agent_bench.judges.grounding import GroundingJudge
 from agent_bench.judges.numeric import NumericCorrectnessJudge
+from agent_bench.judges.cross_artifact import CrossArtifactConsistencyJudge
 
 
 class CompositeJudge:
@@ -17,12 +21,14 @@ class CompositeJudge:
     1. Deterministic (state match / refusal) — always runs
     2. Numeric correctness — runs if expected_numeric_values exist
     3. Grounding — runs if retrieval was involved
+    4. Cross-artifact consistency — runs if multiple artifacts exist (BTB)
     """
 
     def __init__(self, numeric_tolerance: float = 0.01):
         self._deterministic = DeterministicJudge()
         self._numeric = NumericCorrectnessJudge(default_tolerance=numeric_tolerance)
         self._grounding = GroundingJudge()
+        self._cross_artifact = CrossArtifactConsistencyJudge()
 
     @property
     def judge_id(self) -> str:
@@ -62,6 +68,16 @@ class CompositeJudge:
         if has_retrieval:
             ground_verdict = await self._grounding.evaluate(task, result, traces)
             verdicts.append(ground_verdict)
+
+        # 4. Cross-artifact consistency judge (if multiple artifacts, BTB-inspired)
+        has_multiple_artifacts = (
+            (result.get("artifacts") and len(result["artifacts"]) >= 2)
+            or (result.get("response") and result.get("structured_data"))
+            or (result.get("response") and result.get("calculation_output"))
+        )
+        if has_multiple_artifacts:
+            cross_verdict = await self._cross_artifact.evaluate(task, result, traces)
+            verdicts.append(cross_verdict)
 
         # Compute final score: weighted average with deterministic as primary
         final_score = _compute_composite_score(verdicts)

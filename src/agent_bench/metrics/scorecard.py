@@ -1,4 +1,9 @@
-"""Scorecard computation from task results."""
+"""Scorecard computation from task results.
+
+Enhanced with:
+- FINESSE-Bench-inspired balanced model profile (M9): captures cross-domain robustness
+- FinanceBench-inspired hallucination_rate (M10): first-class metric from grounding
+"""
 
 from typing import Any
 
@@ -54,12 +59,16 @@ def compute_scorecard(
             reliabilities.append(sum(reps) / len(reps))
     reliability_score = sum(reliabilities) / len(reliabilities) if reliabilities else functional_score
 
+    # M10: Hallucination rate (FinanceBench-inspired, from grounding results)
+    hallucination_rate = _compute_hallucination_rate(task_results)
+
     metrics = [
         MetricResult(name="functional_score", value=functional_score, category=MetricCategory.FUNCTIONAL),
         MetricResult(name="risk_score", value=risk_score, category=MetricCategory.SAFETY),
         MetricResult(name="cost_score", value=cost_score, category=MetricCategory.COST),
         MetricResult(name="latency_score", value=latency_score, category=MetricCategory.LATENCY),
         MetricResult(name="reliability_score", value=reliability_score, category=MetricCategory.RELIABILITY),
+        MetricResult(name="hallucination_rate", value=hallucination_rate, category=MetricCategory.SAFETY),
     ]
 
     return Scorecard(
@@ -73,3 +82,68 @@ def compute_scorecard(
         weights=weights,
         metrics=metrics,
     )
+
+
+def compute_balanced_profile(
+    scorecards: list[dict[str, Any]],
+    system_id: str,
+) -> dict[str, Any]:
+    """Compute balanced model profile across domains (FINESSE-Bench Table 10 style).
+
+    Identifies whether a system is a "local leader" on specific domains
+    or a "balanced" performer with consistent quality everywhere.
+    """
+    system_cards = [s for s in scorecards if s.get("system_id") == system_id]
+    if not system_cards:
+        return {"system_id": system_id, "balanced": False, "profile": "no_data"}
+
+    domain_scores = {s["domain"]: s.get("functional_score", 0.0) for s in system_cards}
+    scores = list(domain_scores.values())
+
+    avg = sum(scores) / len(scores) if scores else 0.0
+    min_score = min(scores) if scores else 0.0
+    max_score = max(scores) if scores else 0.0
+    std = _std(scores)
+
+    return {
+        "system_id": system_id,
+        "avg_cross_domain": avg,
+        "min_score": min_score,
+        "max_score": max_score,
+        "std_cross_domain": std,
+        "domain_scores": domain_scores,
+        # Balanced = high avg + low std (FINESSE-Bench criterion)
+        "robustness_score": avg - std * 2,
+        "balanced": std < 0.1,
+        "profile": "balanced" if std < 0.1 else ("strong_local" if max_score > avg + 0.15 else "moderate"),
+    }
+
+
+def _compute_hallucination_rate(task_results: list[dict[str, Any]]) -> float:
+    """Extract hallucination rate from task results (FinanceBench M10).
+
+    Looks for grounding judge metadata in results.
+    """
+    total_claims = 0
+    hallucinated = 0
+
+    for r in task_results:
+        grounding = r.get("grounding_metadata", {})
+        claims = grounding.get("total_claims", 0)
+        grounded = grounding.get("grounded_claims", 0)
+        if claims > 0:
+            total_claims += claims
+            hallucinated += (claims - grounded)
+
+    if total_claims == 0:
+        return 0.0
+    return hallucinated / total_claims
+
+
+def _std(values: list[float]) -> float:
+    """Standard deviation."""
+    if len(values) < 2:
+        return 0.0
+    mean = sum(values) / len(values)
+    variance = sum((x - mean) ** 2 for x in values) / (len(values) - 1)
+    return variance ** 0.5
