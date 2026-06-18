@@ -15,6 +15,7 @@ class ModelResponse:
     tokens_out: int = 0
     latency_ms: float = 0.0
     time_to_first_token_ms: float = 0.0
+    thinking_content: str | None = None  # Raw <think> block content if present
     raw: dict[str, Any] = field(default_factory=dict)
 
 

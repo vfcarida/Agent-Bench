@@ -15,6 +15,18 @@ class ModelConfig(BaseModel):
     endpoint: str | None = None
     api_key_env: str | None = None
     parameters: dict[str, Any] = {}
+    # Local model hosting fields (Athena integration)
+    model_path: str | None = None  # Local filesystem path or HF hub ID
+    tensor_parallel_size: int = 1
+    gpu_memory_utilization: float = 0.9
+    device: str = "auto"  # auto/cpu/cuda
+    torch_dtype: str = "auto"  # auto/float16/bfloat16
+    load_in_8bit: bool = False
+    load_in_4bit: bool = False
+    prompt_template: str | None = None  # Jinja template name or path
+    # PEFT/LoRA adapter fields
+    adapter_path: str | None = None  # Path to LoRA adapter weights
+    adapter_name: str | None = None  # Logical name for the adapter
 
 
 class SystemConfig(BaseModel):

@@ -1,0 +1,61 @@
+# Example configuration for local Athena models.
+# Copy and modify for your specific setup.
+
+models:
+  # HuggingFace Pipeline adapter — works on CPU/GPU, any platform
+  - model_id: athena-7b-base
+    provider: huggingface
+    model_path: "./models/athena-7b"
+    device: auto
+    torch_dtype: bfloat16
+    prompt_template: chatml
+    parameters:
+      temperature: 0.0
+      max_tokens: 4096
+
+  # vLLM adapter — high-throughput, Linux + CUDA only
+  - model_id: athena-7b-vllm
+    provider: vllm
+    model_path: "./models/athena-7b"
+    tensor_parallel_size: 1
+    gpu_memory_utilization: 0.9
+    prompt_template: chatml
+    parameters:
+      temperature: 0.0
+      max_tokens: 4096
+
+  # PEFT/LoRA adapter — uses base model with swappable adapters
+  - model_id: athena-7b-math-lora
+    provider: huggingface
+    model_path: "./models/athena-7b"
+    adapter_path: "./adapters/math-reasoning"
+    adapter_name: math-reasoning
+    device: auto
+    torch_dtype: bfloat16
+    prompt_template: chatml
+    parameters:
+      temperature: 0.0
+      max_tokens: 4096
+
+  - model_id: athena-7b-code-lora
+    provider: huggingface
+    model_path: "./models/athena-7b"
+    adapter_path: "./adapters/code-generation"
+    adapter_name: code-generation
+    device: auto
+    torch_dtype: bfloat16
+    prompt_template: chatml
+    parameters:
+      temperature: 0.0
+      max_tokens: 4096
+
+  # 13B merged model with lineage tracking
+  - model_id: athena-13b-merged-v2
+    provider: vllm
+    model_path: "./models/athena-13b-merged-v2"
+    tensor_parallel_size: 2
+    gpu_memory_utilization: 0.85
+    prompt_template: llama3
+    parameters:
+      temperature: 0.0
+      max_tokens: 8192

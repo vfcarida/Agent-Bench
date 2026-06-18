@@ -5,12 +5,14 @@ from typing import Any
 
 import structlog
 
-from agent_bench.core.adapters import JudgeVerdict
+from agent_bench.core.adapters import JudgeVerdict, ModelAdapter, ModelResponse
 from agent_bench.core.artifacts import TraceEvent, TraceEventType
 from agent_bench.core.config import BenchConfig
 from agent_bench.core.scenarios import Task
 from agent_bench.datasets.loader import load_domain_tasks
+from agent_bench.graders.thinking_parser import parse_thinking_response
 from agent_bench.judges.composite import CompositeJudge
+from agent_bench.runners.prompt_formatter import PromptFormatter
 
 logger = structlog.get_logger()
 
@@ -21,25 +23,69 @@ async def execute_task(
     config: BenchConfig,
     *,
     seed: int | None = None,
+    model: ModelAdapter | None = None,
+    prompt_formatter: PromptFormatter | None = None,
 ) -> tuple[bool, list[TraceEvent]]:
     """Execute a single task and return (success, traces).
 
-    Uses stub execution + composite judge (deterministic + numeric + grounding).
+    When a ModelAdapter is provided, sends the task to the real model.
+    Otherwise falls back to stub execution for testing.
+
+    When a PromptFormatter is provided, formats the task messages
+    using the model-specific template before sending.
     """
     traces: list[TraceEvent] = []
 
-    # Record the prompt
-    traces.append(TraceEvent(
-        event_type=TraceEventType.PROMPT_SENT,
-        data={"messages": task.input_messages, "system_id": system_id, "seed": seed},
-    ))
+    # Optionally format messages with model-specific template
+    messages = task.input_messages
+    if prompt_formatter is not None:
+        formatted_prompt = prompt_formatter.format_messages(messages)
+        traces.append(TraceEvent(
+            event_type=TraceEventType.PROMPT_SENT,
+            data={
+                "messages": messages,
+                "formatted_prompt": formatted_prompt,
+                "template": prompt_formatter.template_name,
+                "system_id": system_id,
+                "seed": seed,
+            },
+        ))
+    else:
+        traces.append(TraceEvent(
+            event_type=TraceEventType.PROMPT_SENT,
+            data={"messages": messages, "system_id": system_id, "seed": seed},
+        ))
 
-    # Execute (stub or real)
-    simulated_result = _stub_execute(task, system_id)
+    # Execute with real model or fall back to stub
+    if model is not None:
+        simulated_result = await _model_execute(task, model, seed=seed)
+    else:
+        simulated_result = _stub_execute(task, system_id)
+
+    response_text = simulated_result.get("response", "")
+
+    # Parse <think> blocks if present (SwiReasoning support)
+    parsed = parse_thinking_response(response_text)
+    if parsed.has_thinking:
+        traces.append(TraceEvent(
+            event_type=TraceEventType.THINKING_BLOCK,
+            data={
+                "thinking_blocks": parsed.thinking_blocks,
+                "thinking_token_count": parsed.thinking_token_count,
+                "answer_token_count": parsed.answer_token_count,
+                "thinking_ratio": parsed.thinking_ratio,
+            },
+        ))
+        # Use clean response (without <think> tags) for grading
+        simulated_result["response"] = parsed.clean_response
 
     traces.append(TraceEvent(
         event_type=TraceEventType.MODEL_RESPONSE,
-        data={"content": simulated_result.get("response", ""), "system_id": system_id},
+        data={
+            "content": simulated_result.get("response", ""),
+            "system_id": system_id,
+            "had_thinking": parsed.has_thinking,
+        },
     ))
 
     # Record tool calls if any
@@ -74,6 +120,38 @@ async def execute_task(
     ))
 
     return final_verdict.passed, traces
+
+
+async def _model_execute(
+    task: Task,
+    model: ModelAdapter,
+    *,
+    seed: int | None = None,
+) -> dict[str, Any]:
+    """Execute a task using a real ModelAdapter."""
+    try:
+        response: ModelResponse = await model.generate(
+            task.input_messages,
+            temperature=0.0,
+            max_tokens=4096,
+            seed=seed,
+        )
+        return {
+            "response": response.content,
+            "final_state": {},
+            "tools_called": [tc.get("name", "") for tc in response.tool_calls],
+            "tokens_in": response.tokens_in,
+            "tokens_out": response.tokens_out,
+            "latency_ms": response.latency_ms,
+            "thinking_content": response.thinking_content,
+        }
+    except Exception as e:
+        logger.error("model_execution_error", task_id=task.task_id, error=str(e))
+        return {
+            "response": f"[ERROR] Model execution failed: {e}",
+            "final_state": {},
+            "tools_called": [],
+        }
 
 
 def _stub_execute(task: Task, system_id: str) -> dict[str, Any]:

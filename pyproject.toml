@@ -44,7 +44,11 @@ dev = [
 ]
 openai = ["openai>=1.6"]
 anthropic = ["anthropic>=0.18"]
-all = ["agent-bench[openai,anthropic]"]
+vllm = ["vllm>=0.4", "torch>=2.1"]
+huggingface = ["transformers>=4.38", "torch>=2.1", "accelerate>=0.27"]
+peft = ["peft>=0.9", "transformers>=4.38", "torch>=2.1"]
+athena = ["agent-bench[vllm,huggingface,peft]"]
+all = ["agent-bench[openai,anthropic,athena]"]
 
 [project.scripts]
 bench = "agent_bench.cli.main:cli"

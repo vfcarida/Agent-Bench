@@ -18,6 +18,8 @@ class TraceEventType(str, Enum):
     METRIC_COMPUTED = "metric_computed"
     ERROR = "error"
     SYSTEM_EVENT = "system_event"
+    THINKING_BLOCK = "thinking_block"
+    ADAPTER_SWAP = "adapter_swap"
 
 
 @dataclass
