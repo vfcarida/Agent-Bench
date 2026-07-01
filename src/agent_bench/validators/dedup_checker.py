@@ -38,7 +38,7 @@ def _jaccard_similarity(a: set[str], b: set[str]) -> float:
 def find_duplicates(cases: list[dict[str, Any]], threshold: float = 0.85) -> list[tuple[str, str, float]]:
     """Return pairs of (id1, id2, similarity) for cases above threshold.
 
-    Uses Jaccard similarity on tokenized prompt words.
+    Uses Jaccard similarity on tokenized prompt words, optimized with upper-bound length pruning.
     """
     duplicates: list[tuple[str, str, float]] = []
     tokenized: list[tuple[str, set[str]]] = []
@@ -52,8 +52,28 @@ def find_duplicates(cases: list[dict[str, Any]], threshold: float = 0.85) -> lis
         for j in range(i + 1, len(tokenized)):
             id1, tokens1 = tokenized[i]
             id2, tokens2 = tokenized[j]
+            
+            len1 = len(tokens1)
+            len2 = len(tokens2)
+            
+            # Handle edge cases with empty sets
+            if len1 == 0 or len2 == 0:
+                if len1 == len2:  # both empty
+                    sim = 1.0
+                else:
+                    sim = 0.0
+                if sim >= threshold:
+                    duplicates.append((id1, id2, sim))
+                continue
+            
+            # Prune mathematically impossible pairs:
+            # Jaccard(A, B) = |A ∩ B| / |A ∪ B| <= min(|A|, |B|) / max(|A|, |B|)
+            if min(len1, len2) / max(len1, len2) < threshold:
+                continue
+
             sim = _jaccard_similarity(tokens1, tokens2)
             if sim >= threshold:
                 duplicates.append((id1, id2, sim))
 
     return duplicates
+

@@ -1,5 +1,6 @@
 """Parquet export for analytics-friendly metric storage."""
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,7 @@ import pyarrow.parquet as pq
 def save_metrics_parquet(
     records: list[dict[str, Any]], output_path: Path
 ) -> Path:
-    """Save metric records as a Parquet file.
+    """Save metric records as a Parquet file atomically.
 
     Each record should have:
     - run_id, system_id, task_id, domain
@@ -33,7 +34,17 @@ def save_metrics_parquet(
             ("timestamp", pa.string()),
         ])
         table = pa.table({f.name: [] for f in schema}, schema=schema)
-        pq.write_table(table, output_path)  # type: ignore[no-untyped-call]
+        temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+        try:
+            pq.write_table(table, temp_path)  # type: ignore[no-untyped-call]
+            os.replace(temp_path, output_path)
+        except Exception:
+            if temp_path.exists():
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
+            raise
         return output_path
 
     # Normalize records to flat structure
@@ -61,7 +72,17 @@ def save_metrics_parquet(
         columns["timestamp"].append(str(r.get("timestamp", "")))
 
     table = pa.table(columns)
-    pq.write_table(table, output_path)  # type: ignore[no-untyped-call]
+    temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    try:
+        pq.write_table(table, temp_path)  # type: ignore[no-untyped-call]
+        os.replace(temp_path, output_path)
+    except Exception:
+        if temp_path.exists():
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+        raise
     return output_path
 
 
@@ -76,7 +97,7 @@ def save_comparison_parquet(
     scorecards: list[dict[str, Any]],
     output_path: Path,
 ) -> Path:
-    """Save system comparison as Parquet."""
+    """Save system comparison as Parquet atomically."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     columns: dict[str, list[Any]] = {
@@ -103,5 +124,15 @@ def save_comparison_parquet(
         columns["weighting_profile"].append(sc.get("weighting_profile", ""))
 
     table = pa.table(columns)
-    pq.write_table(table, output_path)  # type: ignore[no-untyped-call]
+    temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    try:
+        pq.write_table(table, temp_path)  # type: ignore[no-untyped-call]
+        os.replace(temp_path, output_path)
+    except Exception:
+        if temp_path.exists():
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+        raise
     return output_path
