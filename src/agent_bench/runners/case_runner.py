@@ -1,20 +1,99 @@
-"""Case runner: executes a single benchmark task."""
+"""Case runner: executes a single benchmark task following Clean Architecture principles."""
 
+import time
 from pathlib import Path
 from typing import Any
 
 import structlog
 
-from agent_bench.core.adapters import JudgeVerdict, ModelAdapter, ModelResponse
+from agent_bench.core.adapters import JudgeVerdict, ModelAdapter, ModelResponse, ToolCallResult
 from agent_bench.core.artifacts import TraceEvent, TraceEventType
 from agent_bench.core.config import BenchConfig
+from agent_bench.core.protocols import AgentRunner, Evaluator, TaskEnvironment
 from agent_bench.core.scenarios import Task
 from agent_bench.datasets.loader import load_domain_tasks
+from agent_bench.graders.gated_evaluator import GatedEvaluator
 from agent_bench.graders.thinking_parser import parse_thinking_response
-from agent_bench.judges.composite import CompositeJudge
 from agent_bench.runners.prompt_formatter import PromptFormatter
+from agent_bench.storage.trace_logger import ExecutionTraceLogger
 
 logger = structlog.get_logger()
+
+
+class DefaultTaskEnvironment:
+    """Standard task environment implementation of TaskEnvironment protocol."""
+
+    def __init__(self, environment_id: str = "default_env") -> None:
+        self._environment_id = environment_id
+        self._state: dict[str, Any] = {}
+
+    @property
+    def environment_id(self) -> str:
+        return self._environment_id
+
+    def reset(self, initial_state: dict[str, Any] | None = None) -> dict[str, Any]:
+        self._state = dict(initial_state or {})
+        return self._state
+
+    async def execute_tool(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> ToolCallResult:
+        return ToolCallResult(
+            tool_name=tool_name,
+            arguments=arguments,
+            output=f"Executed tool '{tool_name}'",
+            success=True,
+        )
+
+    def get_state(self) -> dict[str, Any]:
+        return dict(self._state)
+
+    def cleanup(self) -> None:
+        self._state.clear()
+
+
+class DefaultAgentRunner:
+    """Standard agent runner implementation of AgentRunner protocol."""
+
+    def __init__(
+        self,
+        system_id: str = "default_system",
+        model: ModelAdapter | None = None,
+        prompt_formatter: PromptFormatter | None = None,
+    ) -> None:
+        self._system_id = system_id
+        self._model = model
+        self._prompt_formatter = prompt_formatter
+
+    @property
+    def system_id(self) -> str:
+        return self._system_id
+
+    @property
+    def architecture(self) -> str:
+        return "model_adapter" if self._model else "stub_agent"
+
+    async def run_task(
+        self,
+        task: Task,
+        environment: TaskEnvironment,
+        *,
+        max_steps: int = 10,
+        seed: int | None = None,
+    ) -> tuple[dict[str, Any], list[TraceEvent]]:
+        environment.reset(task.initial_state)
+
+        if self._model is not None:
+            result = await _model_execute(task, self._model, seed=seed)
+        else:
+            result = _stub_execute(task, self.system_id)
+
+        # Merge environment state if updated
+        current_env_state = environment.get_state()
+        if current_env_state and not result.get("final_state"):
+            result["final_state"] = current_env_state
+
+        return result, []
 
 
 async def execute_task(
@@ -25,101 +104,110 @@ async def execute_task(
     seed: int | None = None,
     model: ModelAdapter | None = None,
     prompt_formatter: PromptFormatter | None = None,
+    agent_runner: AgentRunner | None = None,
+    environment: TaskEnvironment | None = None,
+    evaluator: Evaluator | None = None,
+    run_id: str = "run_default",
 ) -> tuple[bool, list[TraceEvent]]:
     """Execute a single task and return (success, traces).
 
-    When a ModelAdapter is provided, sends the task to the real model.
-    Otherwise falls back to stub execution for testing.
-
-    When a PromptFormatter is provided, formats the task messages
-    using the model-specific template before sending.
+    Supports both legacy direct model execution and decoupled Clean Architecture execution
+    via AgentRunner, TaskEnvironment, and Evaluator protocols.
     """
-    traces: list[TraceEvent] = []
+    logger_trace = ExecutionTraceLogger(run_id=run_id, task_id=task.task_id, system_id=system_id)
 
-    # Optionally format messages with model-specific template
+    # 1. Format Prompt Event
     messages = task.input_messages
     if prompt_formatter is not None:
         formatted_prompt = prompt_formatter.format_messages(messages)
-        traces.append(TraceEvent(
-            event_type=TraceEventType.PROMPT_SENT,
-            data={
+        logger_trace.log_event(
+            TraceEventType.PROMPT_SENT,
+            {
                 "messages": messages,
                 "formatted_prompt": formatted_prompt,
                 "template": prompt_formatter.template_name,
                 "system_id": system_id,
                 "seed": seed,
             },
-        ))
+        )
     else:
-        traces.append(TraceEvent(
-            event_type=TraceEventType.PROMPT_SENT,
-            data={"messages": messages, "system_id": system_id, "seed": seed},
-        ))
+        logger_trace.log_event(
+            TraceEventType.PROMPT_SENT,
+            {"messages": messages, "system_id": system_id, "seed": seed},
+        )
 
-    # Execute with real model or fall back to stub
-    if model is not None:
-        simulated_result = await _model_execute(task, model, seed=seed)
-    else:
-        simulated_result = _stub_execute(task, system_id)
+    # 2. Execution Phase
+    start_time = time.perf_counter()
+    env = environment or DefaultTaskEnvironment()
+    runner = agent_runner or DefaultAgentRunner(
+        system_id=system_id, model=model, prompt_formatter=prompt_formatter
+    )
+
+    simulated_result, runner_traces = await runner.run_task(
+        task, env, seed=seed
+    )
+    elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+
+    for tr in runner_traces:
+        logger_trace.log_event(tr.event_type, tr.data, parent_id=tr.parent_id)
 
     response_text = simulated_result.get("response", "")
 
-    # Parse <think> blocks if present (SwiReasoning support)
+    # Parse <think> blocks if present
     parsed = parse_thinking_response(response_text)
     if parsed.has_thinking:
-        traces.append(TraceEvent(
-            event_type=TraceEventType.THINKING_BLOCK,
-            data={
+        logger_trace.log_event(
+            TraceEventType.THINKING_BLOCK,
+            {
                 "thinking_blocks": parsed.thinking_blocks,
                 "thinking_token_count": parsed.thinking_token_count,
                 "answer_token_count": parsed.answer_token_count,
                 "thinking_ratio": parsed.thinking_ratio,
             },
-        ))
-        # Use clean response (without <think> tags) for grading
+        )
         simulated_result["response"] = parsed.clean_response
 
-    traces.append(TraceEvent(
-        event_type=TraceEventType.MODEL_RESPONSE,
-        data={
-            "content": simulated_result.get("response", ""),
-            "system_id": system_id,
-            "had_thinking": parsed.has_thinking,
-        },
-    ))
+    tokens_in = simulated_result.get("tokens_in", 100)
+    tokens_out = simulated_result.get("tokens_out", 50)
+    req_latency = simulated_result.get("latency_ms", elapsed_ms)
 
-    # Record tool calls if any
+    logger_trace.log_model_call(
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        latency_ms=req_latency,
+        model_id=system_id,
+        thinking_content=simulated_result.get("thinking_content"),
+    )
+
     for tool_name in simulated_result.get("tools_called", []):
-        traces.append(TraceEvent(
-            event_type=TraceEventType.TOOL_CALL,
-            data={"tool_name": tool_name, "arguments": {}},
-        ))
+        logger_trace.log_event(
+            TraceEventType.TOOL_CALL,
+            {"tool_name": tool_name, "arguments": {}},
+        )
 
-    # Record retrieval if present
     if simulated_result.get("retrieved_documents"):
-        traces.append(TraceEvent(
-            event_type=TraceEventType.RETRIEVAL_RESULT,
-            data={"documents": simulated_result["retrieved_documents"]},
-        ))
+        logger_trace.log_event(
+            TraceEventType.RETRIEVAL_RESULT,
+            {"documents": simulated_result["retrieved_documents"]},
+        )
 
-    # Composite judge
-    judge = CompositeJudge()
-    final_verdict, all_verdicts = await judge.evaluate(task, simulated_result, traces)
+    # 3. Evaluation Phase (Gated short-circuit logic)
+    eval_engine = evaluator or GatedEvaluator()
+    verdict = await eval_engine.evaluate(task, simulated_result, logger_trace.traces)
 
-    traces.append(TraceEvent(
-        event_type=TraceEventType.JUDGE_DECISION,
-        data={
-            "verdict": final_verdict.passed,
-            "score": final_verdict.score,
-            "reasoning": final_verdict.reasoning,
-            "individual_verdicts": [
-                {"judge_id": v.judge_id, "score": v.score, "passed": v.passed}
-                for v in all_verdicts
-            ],
+    logger_trace.log_event(
+        TraceEventType.JUDGE_DECISION,
+        {
+            "verdict": verdict.passed,
+            "score": verdict.score,
+            "reasoning": verdict.reasoning,
+            "criteria": verdict.criteria,
+            "judge_id": verdict.judge_id,
+            "metadata": verdict.metadata,
         },
-    ))
+    )
 
-    return final_verdict.passed, traces
+    return verdict.passed, logger_trace.traces
 
 
 async def _model_execute(
@@ -162,7 +250,6 @@ def _stub_execute(task: Task, system_id: str) -> dict[str, Any]:
             "final_state": task.expected_final_state,
             "tools_called": task.allowed_tools,
         }
-        # Simulate retrieval for investment tasks
         if task.domain == "investment_advisor" and "retrieval" in task.required_capabilities:
             result["retrieved_documents"] = _stub_retrieval_docs(task)
         return result

@@ -11,8 +11,10 @@ from agent_bench.storage.parquet import (
     save_comparison_parquet,
     save_metrics_parquet,
 )
+from agent_bench.storage.trace_logger import ExecutionTraceLogger
 
 __all__ = [
+    "ExecutionTraceLogger",
     "load_metrics_parquet",
     "load_traces_jsonl",
     "save_comparison_parquet",

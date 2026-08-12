@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  agent-bench:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent_bench_sandbox
+    environment:
+      - BENCH_ENVIRONMENT=testing
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./runs:/app/runs
+      - ./configs:/app/configs
+      - ./datasets:/app/datasets
+    restart: "no"

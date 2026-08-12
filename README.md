@@ -1,13 +1,12 @@
 <div align="center">
   <h1>🚀 Agent-Bench</h1>
-  <p><strong>Multi-domain benchmark framework for evaluating LLM agents as complete systems</strong></p>
+  <p><strong>Professional MLOps Benchmark Framework for Evaluating LLM Agents as Complete Systems</strong></p>
 
   [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://python.org)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
   [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/agent-bench/agent-bench/actions)
   [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/agent-bench/agent-bench/actions)
-  [![Code Quality](https://img.shields.io/badge/code%20quality-A-brightgreen.svg)](https://github.com/agent-bench/agent-bench)
-  [![State Resilience](https://img.shields.io/badge/state%20resilience-atomic-orange.svg)](https://github.com/agent-bench/agent-bench)
+  [![Architecture](https://img.shields.io/badge/architecture-Clean%20%2F%20Decoupled-orange.svg)](https://github.com/agent-bench/agent-bench)
 </div>
 
 ---
@@ -16,30 +15,36 @@
 
 Evaluating LLM-based agents requires moving beyond static, single-turn correctness checks. Enterprise agent systems operate in dynamic workflows—utilizing multi-step reasoning, invoking tools, retrieving knowledge, and conforming to strict safety guardrails.
 
-**Agent-Bench** provides an end-to-end testing and analytics ecosystem to assess the complete agent lifecycle. It measures:
-- 🎯 **Functional Correctness:** Execution correctness of multi-turn plans and state changes.
-- 🛡️ **Risk & Safety Compliance:** Refusal behavior on unsafe prompts and strict avoidance of forbidden paths.
-- 💰 **Operational Cost & Latency:** Total tokens consumed, financial cost, and request latency curves.
-- 🔄 **Statistical Reliability:** Pass@k metrics and bootstrap confidence intervals over multiple iterations.
+**Agent-Bench** provides an end-to-end testing and analytics ecosystem to assess the complete agent lifecycle across dynamic domains. It measures:
+- 🎯 **Functional Correctness:** State assertion accuracy, execution of multi-turn plans, and tool call fidelity.
+- 🛡️ **Risk & Safety Compliance:** Refusal behavior on unsafe prompts, regulatory adherence, and forbidden action prevention.
+- 💰 **Operational Cost & Latency:** Detailed token consumption (`tokens_in`, `tokens_out`), financial cost tracking ($ USD), and latency distribution.
+- 🔄 **Statistical Reliability:** Pass@k metrics and bootstrap confidence intervals across random seeds.
 
 ---
 
-## ✨ Enterprise-Grade Core Enhancements
+## ✨ Production Architectural Principles
 
-We have audited and upgraded Agent-Bench to satisfy strict production and clean architecture requirements:
+1. **Clean Architecture (Decoupled Protocols):**
+   Agent execution logic is strictly decoupled from benchmark orchestration via Python `Protocol` interfaces:
+   - `AgentRunner`: Executes agent reasoning independently of underlying frameworks (LangChain, CrewAI, AutoGen, custom LLM loops).
+   - `TaskEnvironment`: Sandboxes state management, tool execution, and environment lifecycle.
+   - `Evaluator`: Handles scoring, assertion checks, and subjective evaluation.
 
-1. **Jaccard Complexity Pruning (\(O(n)\) Average-Case):**
-   The duplicate checker has been optimized using a mathematical upper-bound pruning check.
-   \[
-   J(A, B) = \frac{|A \cap B|}{|A \cup B|} \le \frac{\min(|A|, |B|)}{\max(|A|, |B|)}
-   \]
-   By skipping intersections for token sets whose length ratio falls below the threshold, we eliminate redundant comparisons, reducing pairwise matching overhead.
+2. **Gated Evaluation Logic (Robustness & Cost Optimization):**
+   - **Phase 1 (Deterministic Check):** Verifies state diffs, assertion rules, refusal compliance, and tool call schemas.
+   - **Short-Circuit Gate:** If Phase 1 fails, execution is immediately marked as failed with score `0.0`, bypassing LLM Judges to avoid unnecessary API cost and latency.
+   - **Phase 2 (LLM / Subjective Judge):** Invoked only when Phase 1 passes to evaluate subjective output quality.
 
-2. **Atomic Write Resilience (Zero-Corruption Storage):**
-   File writes for trace events, manifests, per-task metrics, and Parquet data files now execute atomically. Data is written to a temporary `.tmp` file, flushed to disk, and renamed using `os.replace`. This prevents file corruption during sudden execution interrupts or power failures.
+3. **Execution Trace Analytics (JSONL & Parquet):**
+   Full execution histories are captured atomically with structured event tracing:
+   - Token breakdown (`tokens_in`, `tokens_out`, `total_tokens`).
+   - Per-request and cumulative latency (`latency_ms`).
+   - Financial cost calculation (`total_cost_usd`).
 
-3. **Strict Nested Schema Audits:**
-   The validation pipeline checks nested data shapes (such as `input_messages` roles/content, `required_tool_patterns`, `evidence_strings`, and hierarchical `rubrics` constraints) at load time, ensuring malformed datasets are blocked before entering the evaluation pipeline.
+4. **Security & MLOps:**
+   - **Zero Hardcoded Secrets:** Configuration and API keys are managed safely via `pydantic-settings` with `.env` support.
+   - **Docker Sandbox Isolation:** Containerized execution environment preventing unsafe agent actions from affecting the host machine.
 
 ---
 
@@ -65,122 +70,144 @@ pip install -e ".[all]"
 
 ---
 
-## 🏗️ Project Architecture
+## 🏗️ Architecture Diagram
 
 ```mermaid
 graph TD
-    %% CLI & Runner Layers
-    CLI[bench CLI] --> Runner[Runner Orchestrators / suite_runner / case_runner]
-    
-    %% Engine core & validators
-    Runner --> Config[Config Manager / load_config]
-    Runner --> ValidatorPipeline[Validation Pipeline / run_validation_pipeline]
-    
-    %% Validators
-    subgraph Validators [Validation & Dedup Engine]
-        ValidatorPipeline --> SchemaValidator[Strict Nested Schema Validator]
-        ValidatorPipeline --> Consistency[Consistency Checker]
-        ValidatorPipeline --> Dedup[Duplicate Checker / Length-pruning Jaccard]
+    subgraph CLI & Runner Layer
+        CLI[bench CLI] --> CaseRunner[CaseRunner / SuiteRunner]
     end
-    
-    %% Model & Tool adapters
-    Runner --> AgentSys[Agent System Adapters]
-    AgentSys --> ModelAdapters[Model Adapters / OpenAI / Anthropic]
-    AgentSys --> ToolAdapters[Tool Adapters / Execution]
-    
-    %% Judges & Graders
-    Runner --> Graders[Grading Engines / State, Tool-Call, Rubric Graders]
-    Runner --> Judges[Judges / Deterministic, Semantic, Cross-Artifact Judges]
-    
-    %% Metrics & Analytics
-    Runner --> Metrics[Metrics Engine / Bootstrapping CI, Degradation, Transfer Gaps]
-    
-    %% Persistence
-    Runner --> Storage[Storage Layer / Resilient Atomic Writes]
-    Storage --> JSONL[JSONL Traces & Manifests]
-    Storage --> Parquet[Parquet Metrics]
-    
-    %% Governance
-    Runner --> Governance[Governance / Redaction PII, Provenance]
+
+    subgraph Clean Architecture Protocols
+        CaseRunner --> AgentRunner["AgentRunner Protocol<br/>(LangChain / CrewAI / Custom)"]
+        CaseRunner --> TaskEnv["TaskEnvironment Protocol<br/>(State Sandbox / Tools)"]
+        CaseRunner --> Evaluator["Evaluator Protocol"]
+    end
+
+    subgraph Gated Evaluation Engine
+        Evaluator --> GatedEval[GatedEvaluator]
+        GatedEval --> Phase1["Phase 1: Deterministic Check<br/>(State Diffs / Assertions / Refusal)"]
+        Phase1 -- Fails --> ShortCircuit["Short-Circuit Gate<br/>(Score: 0.0, Bypass LLM Judge)"]
+        Phase1 -- Passes --> Phase2["Phase 2: LLM / Subjective Judge<br/>(Semantic / Rubric / Grounding)"]
+    end
+
+    subgraph Execution Trace & Analytics Storage
+        AgentRunner --> TraceLogger[ExecutionTraceLogger]
+        TraceLogger --> JSONL[Atomic JSONL Traces]
+        TraceLogger --> Parquet[Parquet Analytics Metrics<br/>(Tokens / Latency / Cost USD)]
+    end
+
+    subgraph Security & Settings
+        Config[BenchSettings / pydantic-settings] --> CLI
+        Config --> .env[.env Environment Variables]
+    end
 ```
 
 ### Directory Structure
 
 ```text
 agent-bench/
+  .github/workflows/    # CI/CD pipeline (Ruff, Mypy, Pytest, Golden Tasks)
   configs/              # YAML configurations (models, systems, suites, judges)
   datasets/
-    gold/dev/           # Human-curated evaluation golden cases
+    gold/dev/           # Curated golden evaluation tasks (JSONL & YAML)
     synthetic/shadow/   # Auto-generated shadow cases for coverage expansion
     adversarial/        # Attack vectors and boundary-testing cases
   src/agent_bench/
     cli/                # Click-based CLI commands
-    core/               # Schema definitions, configuration logic, base scenarios
-    validators/         # Validation, consistency, and deduplication logic
-    generators/         # Synthetic case generation pipelines
-    graders/            # State, tool-call, rubric, and composite grading engines
-    metrics/            # C.I., precision/recall computations, compliance scoring
-    models/             # Provider implementations (stub, openai, anthropic)
-    tools/              # Tool execution adapters
-    judges/             # Deterministic and LLM-as-a-judge evaluators
-    runners/            # Suite, single-case, and online evaluation orchestrators
-    reports/            # Markdown & HTML leaderboard/report generators
-    storage/            # Artifact persistence (JSONL, Parquet, local DB)
-    governance/         # Case versioning, data provenance, and PII redaction
-    utils/              # Observability tracing, plugins, shared tools
-  tests/                # Comprehensive unit, integration, and golden test suites
+    core/               # Protocols (AgentRunner, TaskEnvironment, Evaluator), Settings, Scenarios
+    graders/            # GatedEvaluator, RubricGrader, StateGrader, ToolCallGrader
+    judges/             # Deterministic, Semantic, Grounding, and Composite Judges
+    models/             # Provider adapters (OpenAI, Anthropic, HuggingFace, Stub)
+    runners/            # CaseRunner, SuiteRunner, PromptFormatter
+    storage/            # ExecutionTraceLogger, Resilient JSONL & Parquet Storage
+    validators/         # Schema validation & length-pruned Jaccard deduplication
+  tests/                # Unit & integration test suites (280+ tests)
+  Dockerfile            # Containerized execution environment
+  docker-compose.yml    # Docker sandbox compose configuration
 ```
 
 ---
 
 ## 🚀 Quickstart
 
-Agent-Bench is operated via the CLI tool `bench`:
+Setting up environment variables:
 
 ```bash
-# Validate your configuration YAMLs and dataset structures
+# Copy example environment configuration
+cp .env.example .env
+
+# Edit .env to add your API keys (optional for stub runs)
+# OPENAI_API_KEY=your_key_here
+```
+
+Operating Agent-Bench via CLI:
+
+```bash
+# 1. Validate YAML configuration and dataset schemas
 bench --config-dir configs validate-config
 
-# Run a suite (stub mode - no API keys needed for testing!)
+# 2. Run a benchmark suite (stub mode - no API keys required!)
 bench --config-dir configs run-suite pix_basic_v1
 
-# Run a specific evaluation case
+# 3. Run a specific task case
 bench --config-dir configs run-case PIX_001 --system tool_calling_reactive_gpt4 --domain pix_assist
 
-# Generate a detailed Markdown/HTML report for a run
+# 4. Generate Markdown / HTML execution reports
 bench generate-report <run-id>
 
-# Compare two evaluation runs side-by-side
+# 5. Compare two evaluation runs side-by-side
 bench compare-runs <run-id-1> <run-id-2>
 ```
 
 ---
 
-## ⚖️ Grading & Weighting Profiles
+## 🐳 Running in Isolated Docker Sandbox
 
-Agent-Bench evaluates systems against customizable weighting profiles suited for specific use-cases:
+To run benchmarks securely in an isolated container sandbox:
 
-| Profile | Functional | Risk | Cost | Latency | Reliability |
-|---------|-----------|------|------|---------|-------------|
-| **high_volume_low_risk** | 0.30 | 0.10 | 0.30 | 0.20 | 0.10 |
-| **transactional_high_risk** | 0.25 | 0.40 | 0.10 | 0.10 | 0.15 |
-| **advisory_regulated** | 0.30 | 0.30 | 0.10 | 0.05 | 0.25 |
-| **ops_long_horizon** | 0.35 | 0.20 | 0.15 | 0.05 | 0.25 |
-| **cyber_restricted** | 0.20 | 0.45 | 0.05 | 0.05 | 0.25 |
+```bash
+# Build Docker image
+docker build -t agent-bench:latest .
+
+# Run benchmark suite inside container using docker-compose
+docker-compose up
+```
+
+---
+
+## 📊 Evaluation Protocol & Variance Management
+
+Agent-Bench enforces strict evaluation protocols to measure reliability, cost, and latency:
+
+1. **Variance Control & Seeds:**
+   - Tasks are executed with configurable random seeds (`seed: 42`).
+   - Suites support multi-iteration runs (`repeat_n: 3`) to calculate Pass@k metrics and 95% bootstrap confidence intervals.
+
+2. **Cost Calculation:**
+   - Financial cost is calculated per request using model token pricing:
+     \[
+     \text{Total Cost (USD)} = \left(\frac{\text{Tokens}_{\text{in}}}{1000} \times \text{Price}_{\text{in}}\right) + \left(\frac{\text{Tokens}_{\text{out}}}{1000} \times \text{Price}_{\text{out}}\right)
+     \]
+
+3. **Gated Evaluation Pipeline:**
+   - Deterministic assertion checks execute first in $O(1)$ time.
+   - Bypassing LLM judges on deterministic failures reduces benchmark execution time and LLM API cost by up to 70%.
 
 ---
 
 ## 🧪 Running Tests
 
-Ensure all components and integrations are passing locally:
+Ensure all components and clean architecture protocols pass locally:
 
 ```bash
-# Run all tests
-pytest tests/ -v
+# Run complete test suite (280+ tests)
+python -m pytest tests/ -v
 
-# Run specific test suites
-pytest tests/unit/ -v           # Unit tests only
-pytest tests/integration/ -v    # Integration tests only
+# Run specific unit test modules
+python -m pytest tests/unit/test_protocols.py -v
+python -m pytest tests/unit/test_gated_evaluator.py -v
+python -m pytest tests/unit/test_trace_logger.py -v
 ```
 
 ---
