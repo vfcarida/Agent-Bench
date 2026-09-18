@@ -21,13 +21,15 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
 - 💰 **Operational Cost & Latency:** Detailed token consumption (`tokens_in`, `tokens_out`), financial cost tracking ($ USD), and latency distribution.
 - 🔄 **Statistical Reliability:** Pass@k metrics and bootstrap confidence intervals across random seeds.
 
+> **Note on Evaluation Baseline**: The default stub runner (`DefaultAgentRunner` without a backend model) is strictly a smoke agent for pipeline connectivity and test harness verification; it returns benign responses and empty states, and does **not** represent real-agent evaluation. For deterministic, answer-independent offline reference testing in CI, Agent-Bench provides `ScriptedAgentRunner`.
+
 ---
 
 ## ✨ Production Architectural Principles
 
 1. **Clean Architecture (Decoupled Protocols):**
    Agent execution logic is strictly decoupled from benchmark orchestration via Python `Protocol` interfaces:
-   - `AgentRunner`: Executes agent reasoning independently of underlying frameworks (LangChain, CrewAI, AutoGen, custom LLM loops).
+   - `AgentRunner`: Executes agent reasoning independently of underlying frameworks (`DefaultAgentRunner`, `ScriptedAgentRunner`, or custom LLM loops).
    - `TaskEnvironment`: Sandboxes state management, tool execution, and environment lifecycle.
    - `Evaluator`: Handles scoring, assertion checks, and subjective evaluation.
 
@@ -36,11 +38,12 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
    - **Short-Circuit Gate:** If Phase 1 fails, execution is immediately marked as failed with score `0.0`, bypassing LLM Judges to avoid unnecessary API cost and latency.
    - **Phase 2 (LLM / Subjective Judge):** Invoked only when Phase 1 passes to evaluate subjective output quality.
 
-3. **Execution Trace Analytics (JSONL & Parquet):**
-   Full execution histories are captured atomically with structured event tracing:
-   - Token breakdown (`tokens_in`, `tokens_out`, `total_tokens`).
-   - Per-request and cumulative latency (`latency_ms`).
-   - Financial cost calculation (`total_cost_usd`).
+3. **Execution Trace Analytics & Real Accounting (JSONL & Parquet):**
+   Full execution histories and operational metrics are measured from live execution traces:
+   - Measured token consumption (`tokens_in`, `tokens_out`, `total_tokens`).
+   - Per-request, cumulative, and percentile latency distributions (`latency_p50`, `latency_p90`, `latency_p99`).
+   - Financial cost calculation (`total_cost_usd`) driven by configurable per-model input/output pricing (`configs/models/*`) with documented default fallback.
+   - Efficiency accounting with cost-per-successful-task metrics.
 
 4. **Security & MLOps:**
    - **Zero Hardcoded Secrets:** Configuration and API keys are managed safely via `pydantic-settings` with `.env` support.

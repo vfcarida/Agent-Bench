@@ -5,10 +5,32 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      system:
+        description: "Target system ID to evaluate in credentialed lane"
+        required: false
+        default: "prompt_only_gpt4"
+      domain:
+        description: "Domain ID for target task"
+        required: false
+        default: "pix_assist"
+      task_id:
+        description: "Single task ID to execute (e.g., PIX_001)"
+        required: false
+        default: "PIX_001"
+      max_cost_usd:
+        description: "Maximum budget cap in USD"
+        required: false
+        default: "0.10"
+      max_tokens:
+        description: "Maximum token budget cap"
+        required: false
+        default: "1000"
 
 jobs:
-  bench-ci:
-    name: Lint, Test & Golden Benchmarks
+  offline-ci:
+    name: Offline Checks & Golden Suite
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +50,7 @@ jobs:
 
       - name: Code Quality - Ruff Linting
         run: |
-          ruff check src/ agent_bench tests/
+          ruff check src/ tests/
 
       - name: Type Checking - Mypy
         run: |
@@ -42,6 +64,38 @@ jobs:
         run: |
           bench --config-dir configs validate-config
 
-      - name: Run Golden Benchmarks Suite
+      - name: Run Golden Benchmarks Suite (Scripted Reference)
         run: |
-          bench --config-dir configs run-suite pix_basic_v1
+          bench --config-dir configs run-suite pix_basic_v1 --runner scripted
+          python scripts/check_golden.py
+
+  credentialed-ci:
+    name: Credentialed Real Agent Evaluation (Opt-in)
+    needs: offline-ci
+    if: github.event_name == 'workflow_dispatch' && !github.event.repository.fork
+    runs-on: ubuntu-latest
+
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      BENCH_MAX_COST_USD: ${{ inputs.max_cost_usd || '0.10' }}
+      BENCH_MAX_TOKENS: ${{ inputs.max_tokens || '1000' }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Single Real Agent Case
+        run: |
+          bench --config-dir configs run-case ${{ inputs.task_id || 'PIX_001' }} --system ${{ inputs.system || 'prompt_only_gpt4' }} --domain ${{ inputs.domain || 'pix_assist' }}

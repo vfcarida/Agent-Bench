@@ -59,6 +59,22 @@ def compute_scorecard(
             reliabilities.append(sum(reps) / len(reps))
     reliability_score = sum(reliabilities) / len(reliabilities) if reliabilities else functional_score
 
+    # Latency percentiles across all repetitions/tasks
+    all_latencies: list[float] = []
+    for r in task_results:
+        if r.get("latencies_ms"):
+            all_latencies.extend(float(x) for x in r["latencies_ms"])
+        elif "latency_ms" in r:
+            all_latencies.append(float(r["latency_ms"]))
+
+    latency_p50 = _percentile(all_latencies, 50.0)
+    latency_p90 = _percentile(all_latencies, 90.0)
+    latency_p99 = _percentile(all_latencies, 99.0)
+
+    # Cost per successful task: total cost divided by successful tasks (avoid div by zero)
+    total_cost = sum(costs)
+    cost_per_successful_task = total_cost / max(1, passed)
+
     # M10: Hallucination rate (FinanceBench-inspired, from grounding results)
     hallucination_rate = _compute_hallucination_rate(task_results)
 
@@ -69,6 +85,10 @@ def compute_scorecard(
         MetricResult(name="latency_score", value=latency_score, category=MetricCategory.LATENCY),
         MetricResult(name="reliability_score", value=reliability_score, category=MetricCategory.RELIABILITY),
         MetricResult(name="hallucination_rate", value=hallucination_rate, category=MetricCategory.SAFETY),
+        MetricResult(name="latency_p50_ms", value=latency_p50, category=MetricCategory.LATENCY, unit="ms"),
+        MetricResult(name="latency_p90_ms", value=latency_p90, category=MetricCategory.LATENCY, unit="ms"),
+        MetricResult(name="latency_p99_ms", value=latency_p99, category=MetricCategory.LATENCY, unit="ms"),
+        MetricResult(name="cost_per_successful_task", value=cost_per_successful_task, category=MetricCategory.COST, unit="USD"),
     ]
 
     return Scorecard(
@@ -79,6 +99,10 @@ def compute_scorecard(
         cost_score=cost_score,
         latency_score=latency_score,
         reliability_score=reliability_score,
+        latency_p50=latency_p50,
+        latency_p90=latency_p90,
+        latency_p99=latency_p99,
+        cost_per_successful_task=cost_per_successful_task,
         weights=weights,
         metrics=metrics,
     )
@@ -146,4 +170,17 @@ def _std(values: list[float]) -> float:
         return 0.0
     mean = sum(values) / len(values)
     variance = sum((x - mean) ** 2 for x in values) / (len(values) - 1)
-    return variance ** 0.5
+    return float(variance ** 0.5)
+
+
+def _percentile(values: list[float], p: float) -> float:
+    """Compute the p-th percentile of a list of values (0 <= p <= 100) using linear interpolation."""
+    if not values:
+        return 0.0
+    sorted_vals = sorted(values)
+    k = (len(sorted_vals) - 1) * (p / 100.0)
+    f = int(k)
+    c = f + 1
+    if c < len(sorted_vals):
+        return float(round(sorted_vals[f] + (k - f) * (sorted_vals[c] - sorted_vals[f]), 4))
+    return float(round(float(sorted_vals[f]), 4))

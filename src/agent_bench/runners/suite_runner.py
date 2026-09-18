@@ -9,11 +9,12 @@ import structlog
 
 from agent_bench.core.artifacts import RunArtifact
 from agent_bench.core.config import BenchConfig, SuiteConfig
-from agent_bench.core.metrics import WEIGHTING_PROFILES
+from agent_bench.core.protocols import AgentRunner
 from agent_bench.datasets.loader import load_domain_tasks
 from agent_bench.metrics.compute import compute_pass_k
 from agent_bench.metrics.scorecard import compute_scorecard
-from agent_bench.runners.case_runner import execute_task
+from agent_bench.runners.case_runner import DefaultAgentRunner, execute_task
+from agent_bench.runners.scripted import ScriptedAgentRunner
 from agent_bench.storage.jsonl import save_metrics_jsonl, save_run_manifest, save_traces_jsonl
 from agent_bench.storage.parquet import save_metrics_parquet
 from agent_bench.utils.observability import SpanCollector
@@ -21,7 +22,13 @@ from agent_bench.utils.observability import SpanCollector
 logger = structlog.get_logger()
 
 
-async def run_suite(suite_cfg: SuiteConfig, config: BenchConfig, output_dir: Path) -> RunArtifact:
+async def run_suite(
+    suite_cfg: SuiteConfig,
+    config: BenchConfig,
+    output_dir: Path,
+    runner_type: str = "auto",
+    agent_runner: AgentRunner | None = None,
+) -> RunArtifact:
     """Run all tasks in a suite, repeating N times for pass@k."""
     collector = SpanCollector()
 
@@ -47,17 +54,41 @@ async def run_suite(suite_cfg: SuiteConfig, config: BenchConfig, output_dir: Pat
 
         for system_id in suite_cfg.systems:
             system_results: list[dict[str, Any]] = []
+            if agent_runner is not None:
+                active_runner = agent_runner
+            elif runner_type == "scripted":
+                active_runner = ScriptedAgentRunner(system_id=system_id)
+            elif runner_type == "stub":
+                from agent_bench.models.stub import StubModelAdapter
+
+                active_runner = DefaultAgentRunner(
+                    system_id=system_id, model=StubModelAdapter(model_id="stub")
+                )
+            else:
+                from agent_bench.models.factory import build_agent_runner
+
+                active_runner = build_agent_runner(system_id, config)
 
             with collector.trace("system_eval", system_id=system_id):
                 for task in all_tasks:
                     repetition_results: list[bool] = []
+                    repetition_latencies: list[float] = []
+                    repetition_tokens_in: list[int] = []
+                    repetition_tokens_out: list[int] = []
+                    repetition_costs: list[float] = []
 
                     with collector.trace("task_eval", task_id=task.task_id, domain=task.domain):
                         for i in range(suite_cfg.repeat_n):
                             seed = (suite_cfg.seed or 0) + i if suite_cfg.seed is not None else None
-                            success, traces = await execute_task(task, system_id, config, seed=seed)
-                            repetition_results.append(success)
-                            artifact.traces.extend(traces)
+                            case_res = await execute_task(
+                                task, system_id, config, seed=seed, agent_runner=active_runner
+                            )
+                            repetition_results.append(case_res.passed)
+                            repetition_latencies.append(case_res.latency_ms)
+                            repetition_tokens_in.append(case_res.tokens_in)
+                            repetition_tokens_out.append(case_res.tokens_out)
+                            repetition_costs.append(case_res.cost_usd)
+                            artifact.traces.extend(case_res.traces)
 
                     task_passed = any(repetition_results)
                     if task_passed:
@@ -65,15 +96,22 @@ async def run_suite(suite_cfg: SuiteConfig, config: BenchConfig, output_dir: Pat
                     else:
                         failed += 1
 
+                    n_reps = len(repetition_results)
+                    mean_latency = sum(repetition_latencies) / n_reps if n_reps else 0.0
+                    mean_tokens_in = round(sum(repetition_tokens_in) / n_reps) if n_reps else 0
+                    mean_tokens_out = round(sum(repetition_tokens_out) / n_reps) if n_reps else 0
+                    total_task_cost = sum(repetition_costs)
+
                     task_result = {
                         "task_id": task.task_id,
                         "domain": task.domain,
                         "passed": task_passed,
                         "policy_violated": "refusal" in task.tags and task_passed,
-                        "latency_ms": 50.0,
-                        "tokens_in": 100,
-                        "tokens_out": 50,
-                        "cost_usd": 0.001,
+                        "latency_ms": mean_latency,
+                        "latencies_ms": repetition_latencies,
+                        "tokens_in": mean_tokens_in,
+                        "tokens_out": mean_tokens_out,
+                        "cost_usd": total_task_cost,
                         "repetitions": repetition_results,
                     }
                     system_results.append(task_result)
@@ -87,6 +125,28 @@ async def run_suite(suite_cfg: SuiteConfig, config: BenchConfig, output_dir: Pat
                         "metric_name": "task_success",
                         "metric_value": 1.0 if task_passed else 0.0,
                         "metric_category": "functional",
+                        "passed": task_passed,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                    all_metric_records.append({
+                        "run_id": artifact.run_id,
+                        "system_id": system_id,
+                        "task_id": task.task_id,
+                        "domain": task.domain,
+                        "metric_name": "latency_ms",
+                        "metric_value": mean_latency,
+                        "metric_category": "latency",
+                        "passed": task_passed,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                    all_metric_records.append({
+                        "run_id": artifact.run_id,
+                        "system_id": system_id,
+                        "task_id": task.task_id,
+                        "domain": task.domain,
+                        "metric_name": "cost_usd",
+                        "metric_value": total_task_cost,
+                        "metric_category": "cost",
                         "passed": task_passed,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
@@ -117,7 +177,6 @@ async def run_suite(suite_cfg: SuiteConfig, config: BenchConfig, output_dir: Pat
         artifact.system_id = ",".join(suite_cfg.systems)
         artifact.tasks_passed = passed
         artifact.tasks_failed = failed
-        artifact.finalize()
 
         # Scorecards
         scorecards = []
@@ -137,11 +196,16 @@ async def run_suite(suite_cfg: SuiteConfig, config: BenchConfig, output_dir: Pat
                     "latency_score": sc.latency_score,
                     "reliability_score": sc.reliability_score,
                     "global_score": sc.global_score,
+                    "latency_p50": sc.latency_p50,
+                    "latency_p90": sc.latency_p90,
+                    "latency_p99": sc.latency_p99,
+                    "cost_per_successful_task": sc.cost_per_successful_task,
                     "weighting_profile": suite_cfg.weighting_profile,
                 })
 
         artifact.metrics["scorecards"] = scorecards
         artifact.metrics["pass_k"] = pass_k_results
+        artifact.finalize()
         suite_span.set_attribute("tasks_passed", passed)
         suite_span.set_attribute("tasks_failed", failed)
 

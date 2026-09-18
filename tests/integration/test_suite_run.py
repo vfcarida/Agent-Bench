@@ -24,10 +24,12 @@ async def test_run_pix_basic_suite(tmp_path):
         suites=[suite_cfg],
     )
 
-    artifact = await run_suite(suite_cfg, config, tmp_path)
+    artifact = await run_suite(suite_cfg, config, tmp_path, runner_type="scripted")
 
-    assert artifact.tasks_total > 0
-    assert artifact.tasks_passed >= 0
+    assert artifact.tasks_total == 20
+    assert artifact.tasks_passed == 6
+    assert artifact.tasks_failed == 4
+    assert artifact.metrics["scorecards"][0]["functional_score"] == 0.6
     assert artifact.finished_at is not None
     assert artifact.duration_ms is not None
     assert artifact.duration_ms > 0

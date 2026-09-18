@@ -70,9 +70,20 @@ def validate_datasets(fixtures_dir: str) -> None:
 @click.option("--repeat", "-n", default=None, type=int, help="Override repeat_n")
 @click.option("--seed", default=None, type=int, help="Override seed")
 @click.option("--output-dir", default="data/runs", type=click.Path())
+@click.option(
+    "--runner",
+    default="auto",
+    type=click.Choice(["auto", "scripted", "stub"]),
+    help="Agent runner implementation (default: auto)",
+)
 @click.pass_context
 def run_suite(
-    ctx: click.Context, suite_id: str, repeat: int | None, seed: int | None, output_dir: str
+    ctx: click.Context,
+    suite_id: str,
+    repeat: int | None,
+    seed: int | None,
+    output_dir: str,
+    runner: str,
 ) -> None:
     """Run a complete benchmark suite."""
     from agent_bench.runners.suite_runner import run_suite as _run_suite
@@ -89,7 +100,13 @@ def run_suite(
     if seed is not None:
         suite_cfg.seed = seed
 
-    artifact = asyncio.run(_run_suite(suite_cfg, config, Path(output_dir)))
+    from agent_bench.models.factory import ConfigError
+
+    try:
+        artifact = asyncio.run(_run_suite(suite_cfg, config, Path(output_dir), runner_type=runner))
+    except ConfigError as e:
+        console.print(f"[red]Config error: {e}[/red]")
+        raise SystemExit(1)
     console.print(f"[green]Suite completed. Run ID: {artifact.run_id}[/green]")
     console.print(f"  Passed: {artifact.tasks_passed}/{artifact.tasks_total}")
 
@@ -110,11 +127,16 @@ def run_case(
     ctx: click.Context, task_id: str, system: str, domain: str, output_dir: str
 ) -> None:
     """Run a single benchmark case."""
+    from agent_bench.models.factory import ConfigError
     from agent_bench.runners.case_runner import run_single_case
 
     config_dir = ctx.obj["config_dir"]
     config = load_config(config_dir)
-    result = asyncio.run(run_single_case(task_id, system, domain, config, Path(output_dir)))
+    try:
+        result = asyncio.run(run_single_case(task_id, system, domain, config, Path(output_dir)))
+    except ConfigError as e:
+        console.print(f"[red]Config error: {e}[/red]")
+        raise SystemExit(1)
     if result:
         console.print(f"[green]Task {task_id}: PASSED[/green]")
     else:

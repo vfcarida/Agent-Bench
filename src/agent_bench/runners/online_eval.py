@@ -185,6 +185,10 @@ async def run_online_eval(
                 "latency_score": sc.latency_score,
                 "reliability_score": sc.reliability_score,
                 "global_score": sc.global_score,
+                "latency_p50": sc.latency_p50,
+                "latency_p90": sc.latency_p90,
+                "latency_p99": sc.latency_p99,
+                "cost_per_successful_task": sc.cost_per_successful_task,
                 "weighting_profile": weighting_profile,
             })
 

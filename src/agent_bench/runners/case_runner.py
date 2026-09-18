@@ -1,16 +1,18 @@
 """Case runner: executes a single benchmark task following Clean Architecture principles."""
 
 import time
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import structlog
 
-from agent_bench.core.adapters import JudgeVerdict, ModelAdapter, ModelResponse, ToolCallResult
+from agent_bench.core.adapters import ModelAdapter, ModelResponse, ToolCallResult
 from agent_bench.core.artifacts import TraceEvent, TraceEventType
 from agent_bench.core.config import BenchConfig
 from agent_bench.core.protocols import AgentRunner, Evaluator, TaskEnvironment
 from agent_bench.core.scenarios import Task
+from agent_bench.core.settings import settings
 from agent_bench.datasets.loader import load_domain_tasks
 from agent_bench.graders.gated_evaluator import GatedEvaluator
 from agent_bench.graders.thinking_parser import parse_thinking_response
@@ -18,6 +20,28 @@ from agent_bench.runners.prompt_formatter import PromptFormatter
 from agent_bench.storage.trace_logger import ExecutionTraceLogger
 
 logger = structlog.get_logger()
+
+
+@dataclass
+class CaseResult:
+    """Result of executing a single task with real measured metrics."""
+
+    passed: bool
+    traces: list[TraceEvent]
+    latency_ms: float = 0.0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost_usd: float = 0.0
+
+    def __iter__(self) -> Iterator[Any]:
+        """Allows unpacking as (passed, traces) for backwards compatibility."""
+        return iter((self.passed, self.traces))
+
+    def __len__(self) -> int:
+        return 2
+
+    def __getitem__(self, index: int) -> Any:
+        return (self.passed, self.traces)[index]
 
 
 class DefaultTaskEnvironment:
@@ -108,13 +132,45 @@ async def execute_task(
     environment: TaskEnvironment | None = None,
     evaluator: Evaluator | None = None,
     run_id: str = "run_default",
-) -> tuple[bool, list[TraceEvent]]:
-    """Execute a single task and return (success, traces).
+) -> CaseResult:
+    """Execute a single task and return CaseResult with real measured metrics.
 
     Supports both legacy direct model execution and decoupled Clean Architecture execution
     via AgentRunner, TaskEnvironment, and Evaluator protocols.
     """
-    logger_trace = ExecutionTraceLogger(run_id=run_id, task_id=task.task_id, system_id=system_id)
+    # 0. Resolve model pricing from config (falling back to settings defaults with warning)
+    cost_per_1k_input: float | None = None
+    cost_per_1k_output: float | None = None
+
+    sys_cfg = next((s for s in config.systems if s.system_id == system_id), None)
+    model_id = sys_cfg.model if sys_cfg else None
+
+    if model_id:
+        model_cfg = next((m for m in config.models if m.model_id == model_id), None)
+        if model_cfg is not None:
+            cost_per_1k_input = model_cfg.price_per_1k_input
+            cost_per_1k_output = model_cfg.price_per_1k_output
+
+    if cost_per_1k_input is None or cost_per_1k_output is None:
+        logger.warning(
+            "pricing_fallback_to_defaults",
+            system_id=system_id,
+            model_id=model_id,
+            cost_per_1k_input=settings.cost_per_1k_input_tokens,
+            cost_per_1k_output=settings.cost_per_1k_output_tokens,
+        )
+        if cost_per_1k_input is None:
+            cost_per_1k_input = settings.cost_per_1k_input_tokens
+        if cost_per_1k_output is None:
+            cost_per_1k_output = settings.cost_per_1k_output_tokens
+
+    logger_trace = ExecutionTraceLogger(
+        run_id=run_id,
+        task_id=task.task_id,
+        system_id=system_id,
+        cost_per_1k_input=cost_per_1k_input,
+        cost_per_1k_output=cost_per_1k_output,
+    )
 
     # 1. Format Prompt Event
     messages = task.input_messages
@@ -167,9 +223,20 @@ async def execute_task(
         )
         simulated_result["response"] = parsed.clean_response
 
-    tokens_in = simulated_result.get("tokens_in", 100)
-    tokens_out = simulated_result.get("tokens_out", 50)
-    req_latency = simulated_result.get("latency_ms", elapsed_ms)
+    tokens_in = simulated_result.get("tokens_in")
+    tokens_out = simulated_result.get("tokens_out")
+    req_latency = simulated_result.get("latency_ms")
+
+    if tokens_in is None:
+        tokens_in = sum(
+            len(str(m.get("content", ""))) // 4
+            for m in messages
+            if isinstance(m, dict)
+        )
+    if tokens_out is None:
+        tokens_out = len(response_text) // 4
+    if req_latency is None:
+        req_latency = elapsed_ms
 
     logger_trace.log_model_call(
         tokens_in=tokens_in,
@@ -207,7 +274,14 @@ async def execute_task(
         },
     )
 
-    return verdict.passed, logger_trace.traces
+    return CaseResult(
+        passed=verdict.passed,
+        traces=logger_trace.traces,
+        latency_ms=logger_trace.total_latency_ms,
+        tokens_in=logger_trace.tokens_in,
+        tokens_out=logger_trace.tokens_out,
+        cost_usd=logger_trace.total_cost_usd,
+    )
 
 
 async def _model_execute(
@@ -243,89 +317,21 @@ async def _model_execute(
 
 
 def _stub_execute(task: Task, system_id: str) -> dict[str, Any]:
-    """Stub execution — simulates system behavior based on task metadata."""
-    if "happy_path" in task.tags:
-        result: dict[str, Any] = {
-            "response": _generate_stub_response(task),
-            "final_state": task.expected_final_state,
-            "tools_called": task.allowed_tools,
-        }
-        if task.domain == "investment_advisor" and "retrieval" in task.required_capabilities:
-            result["retrieved_documents"] = _stub_retrieval_docs(task)
-        return result
-    elif "refusal" in task.tags:
-        return {
-            "response": _generate_refusal_response(task),
-            "final_state": {},
-            "refusal": True,
-            "tools_called": [],
-        }
-    elif "edge_case" in task.tags:
-        result = {
-            "response": f"[STUB] Task {task.task_id} edge case handled.",
-            "final_state": task.expected_final_state,
-            "tools_called": task.allowed_tools[:2],
-        }
-        if "retrieval" in task.required_capabilities:
-            result["retrieved_documents"] = _stub_retrieval_docs(task)
-        return result
-    else:
-        return {
-            "response": f"[STUB] Task {task.task_id} partial execution.",
-            "final_state": {},
-            "tools_called": [],
-        }
+    """Honest domain-agnostic stub execution (smoke agent).
 
-
-def _generate_stub_response(task: Task) -> str:
-    """Generate a plausible stub response for happy path tasks."""
-    if task.domain == "investment_advisor":
-        numeric_values = task.metadata.get("expected_numeric_values", {})
-        parts = [f"[STUB] Task {task.task_id} completed."]
-        for key, val in numeric_values.items():
-            parts.append(f"{key}: {val}")
-        parts.append("[Fonte: manual_produtos_rf_v3]")
-        return " ".join(parts)
-    return f"[STUB] Task {task.task_id} executed successfully."
-
-
-def _generate_refusal_response(task: Task) -> str:
-    """Generate a refusal response stub."""
-    if "guarantee_prohibition" in task.tags:
-        return "Não é possível garantir retornos em investimentos. Todo investimento envolve riscos."
-    if "concentration_violation" in task.tags:
-        return "Não posso recomendar concentração de 100% em um único ativo. A política limita a 50%."
-    if "insider_trading" in task.tags:
-        return "Não tenho e não posso fornecer informações privilegiadas. Isso viola regulamentações."
-    if "suitability_mismatch" in task.tags:
-        return "Criptoativos não são adequados para seu perfil conservador. Considere Tesouro Selic."
-    return "[STUB] I cannot perform this action due to policy restrictions."
-
-
-def _stub_retrieval_docs(task: Task) -> list[dict[str, Any]]:
-    """Return stub retrieved documents for investment domain."""
-    return [
-        {
-            "doc_id": "inv_001",
-            "title": "CDB Pós-fixado - Características",
-            "content": (
-                "O CDB pós-fixado rende com base no CDI. Rentabilidade típica: 100-120% CDI. "
-                "Garantido pelo FGC até R$250.000 por CPF/instituição."
-            ),
-            "source": "manual_produtos_rf_v3",
-            "relevance_score": 0.9,
-        },
-        {
-            "doc_id": "inv_002",
-            "title": "Suitability - Classificação de Perfil",
-            "content": (
-                "Perfil Conservador: até 20% em renda variável. "
-                "Perfil Moderado: até 40% em renda variável."
-            ),
-            "source": "politica_suitability_v2",
-            "relevance_score": 0.95,
-        },
-    ]
+    This stub performs minimal smoke execution for pipeline connectivity and harness verification.
+    It strictly does NOT read task.expected_final_state, task.allowed_tools,
+    task.expected_refusal_mode, or expected_numeric_values from task metadata.
+    It returns a fixed benign response, empty final state, and no tool calls.
+    It peeks at no answer labels or gold references; refusal and state-check tasks
+    fail honestly under this baseline smoke policy.
+    """
+    return {
+        "response": "I need more information to proceed safely.",
+        "final_state": {},
+        "tools_called": [],
+        "refusal": False,
+    }
 
 
 async def run_single_case(
@@ -337,5 +343,8 @@ async def run_single_case(
     if not task:
         logger.error("task_not_found", task_id=task_id, domain=domain)
         return False
-    success, _ = await execute_task(task, system_id, config)
-    return success
+    from agent_bench.models.factory import build_agent_runner
+
+    runner = build_agent_runner(system_id, config)
+    case_res = await execute_task(task, system_id, config, agent_runner=runner)
+    return case_res.passed

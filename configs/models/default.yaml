@@ -2,6 +2,8 @@ models:
   - model_id: gpt-4o
     provider: openai
     api_key_env: OPENAI_API_KEY
+    price_per_1k_input: 0.0025
+    price_per_1k_output: 0.0100
     parameters:
       temperature: 0.0
       max_tokens: 4096
@@ -9,6 +11,8 @@ models:
   - model_id: claude-sonnet-4-20250514
     provider: anthropic
     api_key_env: ANTHROPIC_API_KEY
+    price_per_1k_input: 0.0030
+    price_per_1k_output: 0.0150
     parameters:
       temperature: 0.0
       max_tokens: 4096
@@ -17,6 +21,8 @@ models:
     provider: internal
     endpoint: "${INTERNAL_MODEL_ENDPOINT}"
     api_key_env: INTERNAL_MODEL_API_KEY
+    price_per_1k_input: 0.0002
+    price_per_1k_output: 0.0002
     parameters:
       temperature: 0.0
       max_tokens: 2048

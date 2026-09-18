@@ -9,6 +9,8 @@ models:
     device: auto
     torch_dtype: bfloat16
     prompt_template: chatml
+    price_per_1k_input: 0.0
+    price_per_1k_output: 0.0
     parameters:
       temperature: 0.0
       max_tokens: 4096
@@ -20,6 +22,8 @@ models:
     tensor_parallel_size: 1
     gpu_memory_utilization: 0.9
     prompt_template: chatml
+    price_per_1k_input: 0.0
+    price_per_1k_output: 0.0
     parameters:
       temperature: 0.0
       max_tokens: 4096
@@ -33,6 +37,8 @@ models:
     device: auto
     torch_dtype: bfloat16
     prompt_template: chatml
+    price_per_1k_input: 0.0
+    price_per_1k_output: 0.0
     parameters:
       temperature: 0.0
       max_tokens: 4096
@@ -45,6 +51,8 @@ models:
     device: auto
     torch_dtype: bfloat16
     prompt_template: chatml
+    price_per_1k_input: 0.0
+    price_per_1k_output: 0.0
     parameters:
       temperature: 0.0
       max_tokens: 4096
@@ -56,6 +64,8 @@ models:
     tensor_parallel_size: 2
     gpu_memory_utilization: 0.85
     prompt_template: llama3
+    price_per_1k_input: 0.0
+    price_per_1k_output: 0.0
     parameters:
       temperature: 0.0
       max_tokens: 8192

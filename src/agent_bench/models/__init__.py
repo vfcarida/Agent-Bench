@@ -1,8 +1,14 @@
 """Model adapter implementations."""
 
+from agent_bench.models.factory import ConfigError, build_agent_runner, build_model_adapter
 from agent_bench.models.stub import StubModelAdapter
 
-__all__ = ["StubModelAdapter"]
+__all__ = [
+    "ConfigError",
+    "StubModelAdapter",
+    "build_agent_runner",
+    "build_model_adapter",
+]
 from typing import Type, Any
 
 # Lazy imports to avoid requiring optional dependencies

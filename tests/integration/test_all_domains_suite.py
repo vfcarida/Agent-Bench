@@ -24,20 +24,22 @@ async def test_run_all_domains(tmp_path):
         suites=[suite_cfg],
     )
 
-    artifact = await run_suite(suite_cfg, config, tmp_path)
+    artifact = await run_suite(suite_cfg, config, tmp_path, runner_type="scripted")
 
     # 10 (pix) + 12 (investment) + 10 (sme) + 10 (cyber) = 42 tasks × 1 system × 1 repeat
     assert artifact.tasks_total == 42
-    assert artifact.tasks_passed >= 0
+    assert artifact.tasks_passed == 9
     assert artifact.finished_at is not None
 
     # Scorecards for all 4 domains
     scorecards = artifact.metrics["scorecards"]
-    domains_in_scorecards = {sc["domain"] for sc in scorecards}
-    assert "pix_assist" in domains_in_scorecards
-    assert "investment_advisor" in domains_in_scorecards
-    assert "sme_business_advisor" in domains_in_scorecards
-    assert "cyber_sandbox" in domains_in_scorecards
+    scorecard_map = {sc["domain"]: sc["functional_score"] for sc in scorecards}
+    assert "pix_assist" in scorecard_map
+    assert scorecard_map["pix_assist"] == 0.6
+    assert "investment_advisor" in scorecard_map
+    assert "sme_business_advisor" in scorecard_map
+    assert "cyber_sandbox" in scorecard_map
+    assert scorecard_map["cyber_sandbox"] == 0.2
 
 
 @pytest.mark.asyncio

@@ -15,6 +15,8 @@ class ModelConfig(BaseModel):
     endpoint: str | None = None
     api_key_env: str | None = None
     parameters: dict[str, Any] = {}
+    price_per_1k_input: float | None = None
+    price_per_1k_output: float | None = None
     # Local model hosting fields (Athena integration)
     model_path: str | None = None  # Local filesystem path or HF hub ID
     tensor_parallel_size: int = 1
@@ -48,6 +50,9 @@ class SystemConfig(BaseModel):
             "tool_calling_reactive",
             "planner_executor",
             "planner_executor_with_memory",
+            "stub",
+            "scripted",
+            "scripted_policy",
         }
         if v not in valid:
             raise ValueError(f"Architecture must be one of {valid}")

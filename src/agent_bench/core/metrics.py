@@ -43,6 +43,10 @@ class Scorecard:
     cost_score: float = 0.0
     latency_score: float = 0.0
     reliability_score: float = 0.0
+    latency_p50: float = 0.0
+    latency_p90: float = 0.0
+    latency_p99: float = 0.0
+    cost_per_successful_task: float = 0.0
     weights: dict[str, float] = field(default_factory=dict)
     metrics: list[MetricResult] = field(default_factory=list)
 

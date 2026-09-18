@@ -38,7 +38,8 @@ def _check_hf_available() -> None:
 def _resolve_torch_dtype(dtype_str: str) -> Any:
     """Convert string dtype to torch dtype."""
     if not HF_AVAILABLE:
-        return None
+        known_torch_types = {"float16", "fp16", "bfloat16", "bf16", "float32", "fp32"}
+        return None if dtype_str in known_torch_types else "auto"
     dtype_map = {
         "auto": "auto",
         "float16": torch.float16,
