@@ -1,7 +1,6 @@
 """Metric computation functions."""
 
 import math
-from typing import Any
 
 from agent_bench.core.metrics import MetricCategory, MetricResult
 
@@ -22,6 +21,27 @@ def compute_pass_k(results: list[bool], k: int = 1) -> float:
         return 0.0
     # Unbiased estimator
     return 1.0 - math.comb(n - c, k) / math.comb(n, k)
+
+
+def compute_pass_hat_k(results: list[bool], k: int = 1) -> float:
+    """Compute pass^k: probability that all k sampled trials succeed.
+
+    Uses the unbiased estimator: C(c, k) / C(n, k)
+    where n = total samples, c = correct samples.
+
+    Ref: tau-bench / tau^2-bench reliability criterion for high-risk domains.
+    """
+    n = len(results)
+    c = sum(results)
+    if n == 0:
+        return 0.0
+    if n < k:
+        return float(c == n and n > 0)
+    if c < k:
+        return 0.0
+    if c == n:
+        return 1.0
+    return math.comb(c, k) / math.comb(n, k)
 
 
 def compute_task_metrics(
@@ -57,6 +77,22 @@ def compute_task_metrics(
     metrics.append(MetricResult(
         name="pass_5",
         value=compute_pass_k(results, min(5, n)),
+        category=MetricCategory.RELIABILITY,
+    ))
+
+    metrics.append(MetricResult(
+        name="pass_hat_1",
+        value=compute_pass_hat_k(results, 1),
+        category=MetricCategory.RELIABILITY,
+    ))
+    metrics.append(MetricResult(
+        name="pass_hat_3",
+        value=compute_pass_hat_k(results, 3),
+        category=MetricCategory.RELIABILITY,
+    ))
+    metrics.append(MetricResult(
+        name="pass_hat_5",
+        value=compute_pass_hat_k(results, min(5, n)),
         category=MetricCategory.RELIABILITY,
     ))
 

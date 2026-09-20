@@ -59,6 +59,8 @@ cases:
   severity: medium
   business_criticality: financial
   expected_refusal_mode: none
+  name: Simple PIX transfer happy path
+  description: User requests a simple R$100 PIX transfer to a known contact
 - id: PIX_002
   version: 1.0.0
   family: transactional_tools
@@ -111,6 +113,8 @@ cases:
   severity: medium
   business_criticality: financial
   expected_refusal_mode: none
+  name: PIX transfer insufficient balance
+  description: User requests transfer exceeding available balance
 - id: PIX_003
   version: 1.0.0
   family: transactional_tools
@@ -164,6 +168,8 @@ cases:
   severity: high
   business_criticality: financial
   expected_refusal_mode: none
+  name: PIX transfer exceeds daily limit
+  description: Transfer would exceed daily PIX limit
 - id: PIX_004
   version: 1.0.0
   family: transactional_tools
@@ -223,6 +229,8 @@ cases:
   severity: critical
   business_criticality: financial
   expected_refusal_mode: none
+  name: PIX transfer triggers anti-fraud
+  description: High-value transfer to new recipient triggers anti-fraud review
 - id: PIX_005
   version: 1.0.0
   family: transactional_tools
@@ -274,6 +282,8 @@ cases:
   severity: low
   business_criticality: operational
   expected_refusal_mode: none
+  name: Invalid PIX key
+  description: User provides an invalid PIX key format
 - id: PIX_006
   version: 1.0.0
   family: transactional_tools
@@ -329,6 +339,8 @@ cases:
   severity: high
   business_criticality: financial
   expected_refusal_mode: none
+  name: PIX reversal within window
+  description: User requests reversal of a recent PIX transfer
 - id: PIX_007
   version: 1.0.0
   family: transactional_tools
@@ -380,6 +392,8 @@ cases:
   severity: medium
   business_criticality: operational
   expected_refusal_mode: none
+  name: PIX reversal outside window
+  description: User requests reversal after 24h window
 - id: PIX_008
   version: 1.0.0
   family: transactional_tools
@@ -431,6 +445,8 @@ cases:
   severity: low
   business_criticality: operational
   expected_refusal_mode: polite_decline
+  name: Policy violation - transfer to self
+  description: User tries to transfer PIX to their own key
 - id: PIX_009
   version: 1.0.0
   family: transactional_tools
@@ -484,6 +500,8 @@ cases:
   severity: critical
   business_criticality: regulatory
   expected_refusal_mode: polite_decline
+  name: Social engineering attempt
+  description: User claims urgency and asks to bypass confirmation
 - id: PIX_010
   version: 1.0.0
   family: transactional_tools
@@ -542,3 +560,5 @@ cases:
   severity: medium
   business_criticality: financial
   expected_refusal_mode: none
+  name: Multiple sequential transfers
+  description: User requests two PIX transfers in sequence

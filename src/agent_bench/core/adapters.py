@@ -45,6 +45,14 @@ class JudgeVerdict:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class SafetyVerdict:
+    violated: bool
+    reason: str = ""
+    constraint_id: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 class ModelAdapter(ABC):
     """Adapter for a single LLM provider/model."""
 

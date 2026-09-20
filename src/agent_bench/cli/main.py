@@ -35,7 +35,7 @@ def validate_config(ctx: click.Context) -> None:
         console.print(f"  Systems: {len(config.systems)}")
         console.print(f"  Suites: {len(config.suites)}")
         console.print(f"  Hash: {config.config_hash()}")
-    except Exception as e:
+    except (ValueError, OSError, FileNotFoundError) as e:
         console.print(f"[red]Config validation failed: {e}[/red]")
         raise SystemExit(1)
 
@@ -61,7 +61,7 @@ def validate_datasets(fixtures_dir: str) -> None:
     if all_valid:
         console.print(f"\n[green]All {len(results)} datasets valid.[/green]")
     else:
-        console.print(f"\n[red]Validation failed.[/red]")
+        console.print("\n[red]Validation failed.[/red]")
         raise SystemExit(1)
 
 
@@ -69,6 +69,7 @@ def validate_datasets(fixtures_dir: str) -> None:
 @click.argument("suite_id")
 @click.option("--repeat", "-n", default=None, type=int, help="Override repeat_n")
 @click.option("--seed", default=None, type=int, help="Override seed")
+@click.option("--split", default=None, help="Override dataset split (e.g., dev, holdout, calibration)")
 @click.option("--output-dir", default="data/runs", type=click.Path())
 @click.option(
     "--runner",
@@ -76,14 +77,29 @@ def validate_datasets(fixtures_dir: str) -> None:
     type=click.Choice(["auto", "scripted", "stub"]),
     help="Agent runner implementation (default: auto)",
 )
+@click.option(
+    "--enable-llm-judge",
+    is_flag=True,
+    default=False,
+    help="[EXPERIMENTAL] Enable SemanticJudge in Phase 2. Requires --llm-judge-system."
+         " Only use after a GO decision from the calibration experiment.",
+)
+@click.option(
+    "--llm-judge-system",
+    default=None,
+    help="System ID whose model acts as the LLM judge (requires --enable-llm-judge).",
+)
 @click.pass_context
 def run_suite(
     ctx: click.Context,
     suite_id: str,
     repeat: int | None,
     seed: int | None,
+    split: str | None,
     output_dir: str,
     runner: str,
+    enable_llm_judge: bool,
+    llm_judge_system: str | None,
 ) -> None:
     """Run a complete benchmark suite."""
     from agent_bench.runners.suite_runner import run_suite as _run_suite
@@ -99,11 +115,26 @@ def run_suite(
         suite_cfg.repeat_n = repeat
     if seed is not None:
         suite_cfg.seed = seed
+    if split is not None:
+        suite_cfg.split = split
 
     from agent_bench.models.factory import ConfigError
 
+    if enable_llm_judge and not llm_judge_system:
+        console.print("[red]--enable-llm-judge requires --llm-judge-system to be specified.[/red]")
+        raise SystemExit(1)
+
     try:
-        artifact = asyncio.run(_run_suite(suite_cfg, config, Path(output_dir), runner_type=runner))
+        artifact = asyncio.run(
+            _run_suite(
+                suite_cfg,
+                config,
+                Path(output_dir),
+                runner_type=runner,
+                enable_llm_judge=enable_llm_judge,
+                llm_judge_system_id=llm_judge_system,
+            )
+        )
     except ConfigError as e:
         console.print(f"[red]Config error: {e}[/red]")
         raise SystemExit(1)
@@ -121,10 +152,11 @@ def run_suite(
 @click.argument("task_id")
 @click.option("--system", required=True, help="System ID to use")
 @click.option("--domain", required=True, help="Domain ID")
+@click.option("--split", default="dev", help="Dataset split (e.g., dev, holdout, calibration)")
 @click.option("--output-dir", default="data/runs", type=click.Path())
 @click.pass_context
 def run_case(
-    ctx: click.Context, task_id: str, system: str, domain: str, output_dir: str
+    ctx: click.Context, task_id: str, system: str, domain: str, split: str, output_dir: str
 ) -> None:
     """Run a single benchmark case."""
     from agent_bench.models.factory import ConfigError
@@ -133,7 +165,7 @@ def run_case(
     config_dir = ctx.obj["config_dir"]
     config = load_config(config_dir)
     try:
-        result = asyncio.run(run_single_case(task_id, system, domain, config, Path(output_dir)))
+        result = asyncio.run(run_single_case(task_id, system, domain, config, Path(output_dir), split=split))
     except ConfigError as e:
         console.print(f"[red]Config error: {e}[/red]")
         raise SystemExit(1)
@@ -141,6 +173,33 @@ def run_case(
         console.print(f"[green]Task {task_id}: PASSED[/green]")
     else:
         console.print(f"[red]Task {task_id}: FAILED[/red]")
+
+
+@cli.command()
+@click.option("--threshold", default=0.80, type=float, help="Jaccard similarity threshold")
+@click.option("--holdout-dir", default=None, type=click.Path(), help="Holdout directory path")
+@click.option("--dev-dir", default=None, type=click.Path(), help="Dev directory path")
+@click.option("--synthetic-dir", default=None, type=click.Path(), help="Synthetic directory path")
+def check_contamination(
+    threshold: float,
+    holdout_dir: str | None,
+    dev_dir: str | None,
+    synthetic_dir: str | None,
+) -> None:
+    """Check for data leakage/contamination between holdout and dev/synthetic datasets."""
+    from agent_bench.validators.contamination import check_contamination as _check_contamination
+
+    report = _check_contamination(
+        holdout_dir=Path(holdout_dir) if holdout_dir else None,
+        dev_dir=Path(dev_dir) if dev_dir else None,
+        synthetic_dir=Path(synthetic_dir) if synthetic_dir else None,
+        threshold=threshold,
+    )
+    console.print(report.summary_text)
+    if not report.passed:
+        console.print("\n[red]Contamination check failed: Data leakage detected![/red]")
+        raise SystemExit(1)
+    console.print("\n[green]Contamination check passed: Zero leakage detected.[/green]")
 
 
 @cli.command()

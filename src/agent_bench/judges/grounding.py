@@ -1,4 +1,11 @@
-"""Grounding judge: verifies response is supported by retrieved documents.
+"""Lexical-overlap grounding judge.
+
+NOTE: This judge is intentionally named "grounding" for historical reasons
+but it operates on LEXICAL OVERLAP (keyword/token matching), NOT semantic
+grounding via a language model.  It verifies that key terms and numeric
+fragments in the agent's response are present in the retrieved documents.
+
+For LLM-based semantic grounding, see judges/semantic.py (SemanticJudge).
 
 Enhanced with FinanceBench-inspired (arXiv:2311.11944) evidence strings:
 - When evidence_strings are available on the task, each expected claim is
@@ -17,22 +24,24 @@ from agent_bench.core.scenarios import Task
 
 
 class GroundingJudge:
-    """Evaluates whether the response is grounded in retrieved documents.
+    """Lexical-overlap grounding judge.
 
-    Checks:
-    - Claims in response have supporting evidence in retrieved docs
-    - Citations reference actual retrieved documents
-    - No hallucinated facts beyond what docs provide
-    - (NEW) Evidence strings verify specific claim-to-source mappings
+    Checks that key terms and numeric fragments in the agent's response
+    appear in retrieved documents.  This is a LEXICAL check — it does NOT
+    perform semantic verification.  Do not interpret its score as evidence of
+    correct semantic reasoning.
+
+    Historical name ``GroundingJudge`` is preserved for backward compatibility.
+    New code should prefer the explicit alias ``LexicalOverlapGroundingJudge``.
     """
 
     @property
     def judge_id(self) -> str:
-        return "grounding_verifier"
+        return "lexical_overlap_grounding"
 
     @property
     def judge_type(self) -> str:
-        return "grounding"
+        return "lexical_overlap_grounding"
 
     async def evaluate(
         self,
@@ -321,3 +330,6 @@ _STOP_WORDS = {
     "que", "se", "ao", "aos", "é", "ser", "ter", "este", "esta", "esse", "essa",
     "the", "is", "are", "and", "or", "of", "to", "in", "for", "on", "with",
 }
+
+# Backward-compatible alias — prefer using LexicalOverlapGroundingJudge in new code.
+LexicalOverlapGroundingJudge = GroundingJudge

@@ -1,8 +1,6 @@
 """Unit tests for HTML report generation."""
 
 import json
-import pytest
-from pathlib import Path
 
 from agent_bench.reports.html_report import generate_html_report, score_class
 
@@ -57,9 +55,6 @@ def test_generate_html_report(tmp_path):
     }
     (runs_dir / "test-run-12345678.json").write_text(json.dumps(run_data))
 
-    # Monkey-patch the runs dir path
-    import agent_bench.reports.html_report as hr
-    original = Path("data/runs")
 
     output_dir = tmp_path / "reports"
     # We need to call with proper working dir context
@@ -78,3 +73,61 @@ def test_generate_html_report(tmp_path):
     assert "0.870" in content
     assert "score-high" in content
     assert "<!DOCTYPE html>" in content
+
+
+def test_generate_html_report_with_pass_k_and_cis(tmp_path):
+    runs_dir = tmp_path / "data" / "runs"
+    runs_dir.mkdir(parents=True)
+
+    run_data = {
+        "run_id": "run-passk-123",
+        "suite_id": "pix_basic_v1",
+        "system_id": "test_sys",
+        "started_at": "2026-01-01T00:00:00",
+        "finished_at": "2026-01-01T00:01:00",
+        "config_hash": "abc123",
+        "benchmark_version": "1.0.0",
+        "tasks_total": 10,
+        "tasks_passed": 6,
+        "tasks_failed": 4,
+        "duration_ms": 1000,
+        "seed": 42,
+        "metrics": {
+            "pass_k": [
+                {
+                    "system_id": "test_sys",
+                    "domain": "pix_assist",
+                    "pass_1": 0.6,
+                    "pass_1_ci": [0.3, 0.9],
+                    "pass_3": 0.8,
+                    "pass_3_ci": [0.5, 1.0],
+                    "pass_hat_3": 0.4,
+                    "pass_hat_3_ci": [0.1, 0.7],
+                    "sampling_denominator": "all_trials_including_failures_timeouts",
+                }
+            ]
+        },
+        "scorecards": [],
+    }
+    (runs_dir / "run-passk-123.json").write_text(json.dumps(run_data))
+
+    output_dir = tmp_path / "reports"
+    import os
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        result = generate_html_report("run-passk-123", output_dir)
+    finally:
+        os.chdir(old_cwd)
+
+    assert result.exists()
+    content = result.read_text()
+    assert "Pass@1 (95% CI)" in content
+    assert "Pass^3 (Reliability)" in content
+    assert "0.600" in content
+    assert "[0.30, 0.90]" in content
+    assert "0.800" in content
+    assert "[0.50, 1.00]" in content
+    assert "0.400" in content
+    assert "[0.10, 0.70]" in content
+

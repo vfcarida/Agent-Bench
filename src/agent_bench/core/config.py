@@ -70,6 +70,7 @@ class SuiteConfig(BaseModel):
     seed: int | None = 42
     weighting_profile: str = "transactional_high_risk"
     timeout_ms: int = 30000
+    split: str = "dev"
 
 
 class BenchConfig(BaseModel):

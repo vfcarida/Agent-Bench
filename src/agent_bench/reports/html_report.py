@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from typing import Any
 
 from jinja2 import Template
 
@@ -100,7 +99,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
                 <th>System</th>
                 <th>Domain</th>
                 <th>Functional</th>
-                <th>Risk</th>
+                <th>Safety Gate</th>
                 <th>Cost</th>
                 <th>Latency</th>
                 <th>Reliability</th>
@@ -114,7 +113,13 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
                 <td>{{ sc.system_id }}</td>
                 <td>{{ sc.domain }}</td>
                 <td class="{{ score_class(sc.functional_score) }}">{{ "%.3f"|format(sc.functional_score) }}</td>
-                <td class="{{ score_class(sc.risk_score) }}">{{ "%.3f"|format(sc.risk_score) }}</td>
+                <td>
+                    {% if sc.safety_gated %}
+                    <span class="badge badge-fail">GATED ({{ sc.safety_violations }})</span>
+                    {% else %}
+                    <span class="badge badge-pass">PASS</span>
+                    {% endif %}
+                </td>
                 <td class="{{ score_class(sc.cost_score) }}">{{ "%.3f"|format(sc.cost_score) }}</td>
                 <td class="{{ score_class(sc.latency_score) }}">{{ "%.3f"|format(sc.latency_score) }}</td>
                 <td class="{{ score_class(sc.reliability_score) }}">{{ "%.3f"|format(sc.reliability_score) }}</td>
@@ -137,17 +142,26 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
     {% endif %}
 
     {% if pass_k_results %}
-    <h2>Pass@K Results</h2>
+    <h2>Pass@K & Reliability (Pass^K) Results</h2>
     <table>
-        <thead><tr><th>System</th><th>Domain</th><th>Pass@1</th><th>Pass@3</th><th>Pass@5</th></tr></thead>
+        <thead><tr><th>System</th><th>Domain</th><th>Pass@1 (95% CI)</th><th>Pass@3 (95% CI)</th><th>Pass^3 (Reliability)</th></tr></thead>
         <tbody>
         {% for pk in pass_k_results %}
             <tr>
                 <td>{{ pk.system_id }}</td>
                 <td>{{ pk.domain }}</td>
-                <td class="{{ score_class(pk.pass_1) }}">{{ "%.3f"|format(pk.pass_1) }}</td>
-                <td class="{{ score_class(pk.pass_3) }}">{{ "%.3f"|format(pk.pass_3) }}</td>
-                <td class="{{ score_class(pk.pass_5) }}">{{ "%.3f"|format(pk.pass_5) }}</td>
+                <td class="{{ score_class(pk.pass_1) }}">
+                    {{ "%.3f"|format(pk.pass_1) }}
+                    {% if pk.pass_1_ci %}<small style="color:var(--muted)"> [{{ "%.2f"|format(pk.pass_1_ci[0]) }}, {{ "%.2f"|format(pk.pass_1_ci[1]) }}]</small>{% endif %}
+                </td>
+                <td class="{{ score_class(pk.pass_3) }}">
+                    {{ "%.3f"|format(pk.pass_3) }}
+                    {% if pk.pass_3_ci %}<small style="color:var(--muted)"> [{{ "%.2f"|format(pk.pass_3_ci[0]) }}, {{ "%.2f"|format(pk.pass_3_ci[1]) }}]</small>{% endif %}
+                </td>
+                <td class="{{ score_class(pk.get('pass_hat_3', pk.pass_1)) }}">
+                    {{ "%.3f"|format(pk.get('pass_hat_3', 0.0)) }}
+                    {% if pk.get('pass_hat_3_ci') %}<small style="color:var(--muted)"> [{{ "%.2f"|format(pk.pass_hat_3_ci[0]) }}, {{ "%.2f"|format(pk.pass_hat_3_ci[1]) }}]</small>{% endif %}
+                </td>
             </tr>
         {% endfor %}
         </tbody>
@@ -189,8 +203,9 @@ def generate_html_report(run_id: str, output_dir: Path) -> Path:
     tasks_passed = data.get("tasks_passed", 0)
     pass_rate = round(tasks_passed / tasks_total * 100, 1) if tasks_total > 0 else 0
 
-    scorecards = data.get("scorecards", [])
+    scorecards = data.get("scorecards", []) or data.get("metrics", {}).get("scorecards", [])
     scorecards_sorted = sorted(scorecards, key=lambda s: s.get("global_score", 0), reverse=True)
+    pass_k_results = data.get("pass_k_results", []) or data.get("metrics", {}).get("pass_k", [])
 
     context = {
         "run_id": data["run_id"],
@@ -207,7 +222,7 @@ def generate_html_report(run_id: str, output_dir: Path) -> Path:
         "seed": data.get("seed", "N/A"),
         "scorecards": scorecards,
         "scorecards_sorted": scorecards_sorted,
-        "pass_k_results": data.get("pass_k_results", []),
+        "pass_k_results": pass_k_results,
         "score_class": score_class,
     }
 

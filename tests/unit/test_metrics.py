@@ -1,6 +1,5 @@
 """Unit tests for metric computation."""
 
-import pytest
 
 from agent_bench.metrics.compute import compute_pass_k, compute_task_metrics
 

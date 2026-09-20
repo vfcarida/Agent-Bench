@@ -19,7 +19,7 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
 - 🎯 **Functional Correctness:** State assertion accuracy, execution of multi-turn plans, and tool call fidelity.
 - 🛡️ **Risk & Safety Compliance:** Refusal behavior on unsafe prompts, regulatory adherence, and forbidden action prevention.
 - 💰 **Operational Cost & Latency:** Detailed token consumption (`tokens_in`, `tokens_out`), financial cost tracking ($ USD), and latency distribution.
-- 🔄 **Statistical Reliability:** Pass@k metrics and bootstrap confidence intervals across random seeds.
+- 🔄 **Statistical Reliability:** Unbiased per-task Pass@k aggregation, non-parametric bootstrap 95% confidence intervals, and pass^k (consistent success across trials) for high-risk domains.
 
 > **Note on Evaluation Baseline**: The default stub runner (`DefaultAgentRunner` without a backend model) is strictly a smoke agent for pipeline connectivity and test harness verification; it returns benign responses and empty states, and does **not** represent real-agent evaluation. For deterministic, answer-independent offline reference testing in CI, Agent-Bench provides `ScriptedAgentRunner`.
 
@@ -33,10 +33,11 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
    - `TaskEnvironment`: Sandboxes state management, tool execution, and environment lifecycle.
    - `Evaluator`: Handles scoring, assertion checks, and subjective evaluation.
 
-2. **Gated Evaluation Logic (Robustness & Cost Optimization):**
-   - **Phase 1 (Deterministic Check):** Verifies state diffs, assertion rules, refusal compliance, and tool call schemas.
-   - **Short-Circuit Gate:** If Phase 1 fails, execution is immediately marked as failed with score `0.0`, bypassing LLM Judges to avoid unnecessary API cost and latency.
-   - **Phase 2 (LLM / Subjective Judge):** Invoked only when Phase 1 passes to evaluate subjective output quality.
+2. **Hard Safety Gating & Non-Compensable Evaluation (Robustness & Integrity):**
+   - **Phase 0 (Hard Safety Gate):** Evaluates non-negotiable safety constraints (refusal requirements, forbidden state changes, disallowed tools). Any breach immediately forces `passed=False` with `safety_violation=True`. Hard safety failures can **never** be averaged away or compensated by quality, latency, or cost.
+   - **Separated Safety Axis:** Scorecards report `safety_violations` (count) and `safety_gated` (bool) on a dedicated safety axis. Weighted `global_score` is computed strictly over the safety-passing subset with normalized weights.
+   - **Phase 1 (Deterministic Check):** Verifies state diffs, assertion rules, and tool call schemas. Short-circuits on failure to avoid unnecessary LLM costs.
+   - **Phase 2 (LLM / Subjective Judge):** Invoked only when safety and deterministic checks pass to evaluate subjective output quality.
 
 3. **Execution Trace Analytics & Real Accounting (JSONL & Parquet):**
    Full execution histories and operational metrics are measured from live execution traces:
@@ -48,6 +49,17 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
 4. **Security & MLOps:**
    - **Zero Hardcoded Secrets:** Configuration and API keys are managed safely via `pydantic-settings` with `.env` support.
    - **Docker Sandbox Isolation:** Containerized execution environment preventing unsafe agent actions from affecting the host machine.
+
+5. **Statistical Rigor & Reliability Estimators:**
+   Benchmark scores reflect robust statistical accounting rather than noisy single-turn or pooled estimates:
+   - **Per-Task Pass@k:** Evaluates the unbiased combinatorial estimator per task across repetitions (never pooled across distinct tasks).
+   - **Bootstrap Confidence Intervals:** Generates 95% non-parametric bootstrap intervals for headline pass rates and reliability.
+   - **Pass^k for High-Risk Profiles:** Measures the probability that *all* $k$ sampled trials succeed ($\text{pass}^k = \binom{c}{k}/\binom{n}{k}$), preventing pass@k from masking critical agent regressions in transactional and cyber domains.
+
+6. **Dataset Governance, Split Discipline & Contamination Gating:**
+   - **Canonical Gold Tree:** `datasets/gold/<split>/<domain>.yaml` serves as the single authoritative dataset hierarchy, using the typed `EvalCase v2` schema.
+   - **Strict Split Isolation:** Split-aware loader isolates `dev`, `holdout`, `calibration`, `regression`, and `smoke`. Loading holdout content from legacy fixture paths is strictly prohibited by regression gates.
+   - **Offline Contamination Gate:** An automated gate (`scripts/check_contamination.py` / `bench check-contamination`) runs in offline CI, testing for verbatim (SHA-256) and paraphrase (token Jaccard) leakage from holdout sets into dev or synthetic training pools.
 
 ---
 

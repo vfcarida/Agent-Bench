@@ -1,9 +1,9 @@
 """Integration test: run all 4 domains end-to-end."""
 
-import pytest
-from pathlib import Path
 
-from agent_bench.core.config import BenchConfig, SuiteConfig, SystemConfig, ModelConfig
+import pytest
+
+from agent_bench.core.config import BenchConfig, ModelConfig, SuiteConfig, SystemConfig
 from agent_bench.runners.suite_runner import run_suite
 
 
@@ -39,7 +39,7 @@ async def test_run_all_domains(tmp_path):
     assert "investment_advisor" in scorecard_map
     assert "sme_business_advisor" in scorecard_map
     assert "cyber_sandbox" in scorecard_map
-    assert scorecard_map["cyber_sandbox"] == 0.2
+    assert scorecard_map["cyber_sandbox"] == 0.25
 
 
 @pytest.mark.asyncio

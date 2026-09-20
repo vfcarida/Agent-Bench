@@ -6,12 +6,14 @@ If Phase 1 fails -> Short-circuit immediately (returns failure verdict without i
 Phase 2: LLM / Subjective Judge evaluation (runs only if Phase 1 passes).
 """
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from agent_bench.core.adapters import JudgeAdapter, JudgeVerdict
 from agent_bench.core.artifacts import TraceEvent
 from agent_bench.core.protocols import Evaluator
 from agent_bench.core.scenarios import Task
+from agent_bench.graders.safety_gate import evaluate_safety
 from agent_bench.judges.deterministic import DeterministicJudge
 
 
@@ -56,6 +58,28 @@ class GatedEvaluator(Evaluator):
         Returns:
             JudgeVerdict reflecting combined or short-circuited evaluation score.
         """
+        # Phase 0: Hard Safety Gate Check (non-compensable pass/fail)
+        safety_verdict = evaluate_safety(task, execution_result, traces)
+        if safety_verdict.violated:
+            return JudgeVerdict(
+                score=0.0,
+                passed=False,
+                reasoning=f"[SAFETY GATE FAIL] Hard safety constraint violated: {safety_verdict.reason} "
+                f"(constraint: {safety_verdict.constraint_id}). Evaluation gated.",
+                judge_id=f"{self.evaluator_id}:safety_gate",
+                criteria="safety_gate",
+                metadata={
+                    "safety_violation": True,
+                    "safety_verdict": {
+                        "violated": True,
+                        "reason": safety_verdict.reason,
+                        "constraint_id": safety_verdict.constraint_id,
+                    },
+                    "gated_status": "safety_gate_failed",
+                    "llm_judges_invoked": False,
+                },
+            )
+
         # Phase 1: Deterministic verification
         det_verdict = await self._deterministic_judge.evaluate(task, execution_result, traces)
 
@@ -69,6 +93,12 @@ class GatedEvaluator(Evaluator):
                 judge_id=f"{self.evaluator_id}:gated_short_circuit",
                 criteria=det_verdict.criteria,
                 metadata={
+                    "safety_violation": False,
+                    "safety_verdict": {
+                        "violated": False,
+                        "reason": safety_verdict.reason,
+                        "constraint_id": safety_verdict.constraint_id,
+                    },
                     "gated_status": "short_circuited",
                     "deterministic_verdict": {
                         "score": det_verdict.score,
@@ -87,6 +117,12 @@ class GatedEvaluator(Evaluator):
                 judge_id=self.evaluator_id,
                 criteria=det_verdict.criteria,
                 metadata={
+                    "safety_violation": False,
+                    "safety_verdict": {
+                        "violated": False,
+                        "reason": safety_verdict.reason,
+                        "constraint_id": safety_verdict.constraint_id,
+                    },
                     "gated_status": "passed_deterministic_only",
                     "llm_judges_invoked": False,
                 },
@@ -103,7 +139,7 @@ class GatedEvaluator(Evaluator):
         all_passed = det_verdict.passed and all(v.passed for v in subjective_verdicts)
 
         combined_reasoning = (
-            f"[GATED PASS] Deterministic pass. LLM Judges: "
+            "[GATED PASS] Deterministic pass. LLM Judges: "
             + "; ".join([f"{v.judge_id} (score={v.score:.2f})" for v in subjective_verdicts])
         )
 
@@ -114,6 +150,12 @@ class GatedEvaluator(Evaluator):
             judge_id=self.evaluator_id,
             criteria="gated_composite",
             metadata={
+                "safety_violation": False,
+                "safety_verdict": {
+                    "violated": False,
+                    "reason": safety_verdict.reason,
+                    "constraint_id": safety_verdict.constraint_id,
+                },
                 "gated_status": "passed_full_evaluation",
                 "deterministic_verdict": {
                     "score": det_verdict.score,

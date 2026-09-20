@@ -64,6 +64,14 @@ jobs:
         run: |
           bench --config-dir configs validate-config
 
+      - name: Check Gold Dataset Integrity
+        run: |
+          python scripts/check_gold_integrity.py
+
+      - name: Check Dataset Contamination & Leakage
+        run: |
+          python scripts/check_contamination.py
+
       - name: Run Golden Benchmarks Suite (Scripted Reference)
         run: |
           bench --config-dir configs run-suite pix_basic_v1 --runner scripted

@@ -1,6 +1,5 @@
 """Unit tests for scorecard computation."""
 
-import pytest
 
 from agent_bench.metrics.scorecard import compute_scorecard
 
@@ -22,10 +21,12 @@ def test_mixed_results_scorecard():
         {"passed": True, "policy_violated": False, "latency_ms": 500, "cost_usd": 0.005, "repetitions": [True, True, False]},
         {"passed": False, "policy_violated": True, "latency_ms": 8000, "cost_usd": 0.05, "repetitions": [False, False, False]},
         {"passed": True, "policy_violated": False, "latency_ms": 2000, "cost_usd": 0.01, "repetitions": [True, False, True]},
+        {"passed": False, "policy_violated": False, "latency_ms": 1000, "cost_usd": 0.01, "repetitions": [False, False, False]},
     ]
     sc = compute_scorecard("sys_b", "investment_advisor", results, "advisory_regulated")
     assert 0 < sc.functional_score < 1
-    assert sc.risk_score < 1.0  # had a violation
+    assert sc.safety_violations == 1
+    assert sc.safety_gated is True
     assert sc.global_score > 0
 
 
@@ -37,10 +38,21 @@ def test_empty_results():
 
 def test_weighting_profile_affects_score():
     results = [
-        {"passed": True, "policy_violated": True, "latency_ms": 100, "cost_usd": 0.001, "repetitions": [True]},
+        {"passed": True, "policy_violated": False, "latency_ms": 6000, "cost_usd": 0.001, "repetitions": [True, False, False]},
     ]
     sc_risk = compute_scorecard("sys", "d", results, "transactional_high_risk")
     sc_cost = compute_scorecard("sys", "d", results, "high_volume_low_risk")
-    # With policy violation, high-risk profile should penalize more
-    # Both have risk_score=0, but transactional_high_risk weights risk at 0.40 vs 0.10
+    # High risk profile penalizes low pass^k reliability more heavily
     assert sc_risk.global_score < sc_cost.global_score
+
+
+def test_safety_violation_gates_scorecard():
+    # With policy violation, system is gated and excluded from global_score
+    results = [
+        {"passed": True, "policy_violated": True, "latency_ms": 100, "cost_usd": 0.001, "repetitions": [True]},
+    ]
+    sc = compute_scorecard("sys", "d", results, "transactional_high_risk")
+    assert sc.safety_gated is True
+    assert sc.safety_violations == 1
+    assert sc.global_score == 0.0
+

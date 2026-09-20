@@ -47,11 +47,24 @@ class Scorecard:
     latency_p90: float = 0.0
     latency_p99: float = 0.0
     cost_per_successful_task: float = 0.0
+    pass_hat_3: float = 0.0
+    pass_at_3: float = 0.0
+    functional_ci: tuple[float, float] = (0.0, 0.0)
+    reliability_ci: tuple[float, float] = (0.0, 0.0)
+    safety_violations: int = 0
+    safety_gated: bool = False
     weights: dict[str, float] = field(default_factory=dict)
     metrics: list[MetricResult] = field(default_factory=list)
 
     @property
     def global_score(self) -> float:
+        """Weighted quality/efficiency score computed over safety-passing tasks.
+
+        Hard safety constraints are non-compensable: safety-violating tasks are
+        excluded from the quality evaluation, and safety status is reported
+        separately on the safety axis (safety_violations, safety_gated).
+        Non-risk profile weights are normalized to sum to 1.0.
+        """
         w = self.weights or {
             "functional": 0.35,
             "risk": 0.25,
@@ -59,12 +72,18 @@ class Scorecard:
             "latency": 0.10,
             "reliability": 0.15,
         }
+        non_risk_weights = {k: v for k, v in w.items() if k != "risk"}
+        total_w = sum(non_risk_weights.values())
+        if total_w > 0:
+            norm_w = {k: v / total_w for k, v in non_risk_weights.items()}
+        else:
+            norm_w = {"functional": 0.5, "cost": 0.2, "latency": 0.1, "reliability": 0.2}
+
         return (
-            self.functional_score * w.get("functional", 0.35)
-            + self.risk_score * w.get("risk", 0.25)
-            + self.cost_score * w.get("cost", 0.15)
-            + self.latency_score * w.get("latency", 0.10)
-            + self.reliability_score * w.get("reliability", 0.15)
+            self.functional_score * norm_w.get("functional", 0.0)
+            + self.cost_score * norm_w.get("cost", 0.0)
+            + self.latency_score * norm_w.get("latency", 0.0)
+            + self.reliability_score * norm_w.get("reliability", 0.0)
         )
 
 

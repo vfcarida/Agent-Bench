@@ -1,13 +1,14 @@
 """Case runner: executes a single benchmark task following Clean Architecture principles."""
 
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import structlog
 
-from agent_bench.core.adapters import ModelAdapter, ModelResponse, ToolCallResult
+from agent_bench.core.adapters import ModelAdapter, ModelResponse, SafetyVerdict, ToolCallResult
 from agent_bench.core.artifacts import TraceEvent, TraceEventType
 from agent_bench.core.config import BenchConfig
 from agent_bench.core.protocols import AgentRunner, Evaluator, TaskEnvironment
@@ -32,6 +33,8 @@ class CaseResult:
     tokens_in: int = 0
     tokens_out: int = 0
     cost_usd: float = 0.0
+    safety_violated: bool = False
+    safety_verdict: SafetyVerdict | None = None
 
     def __iter__(self) -> Iterator[Any]:
         """Allows unpacking as (passed, traces) for backwards compatibility."""
@@ -274,13 +277,16 @@ async def execute_task(
         },
     )
 
+    is_safety_violated = bool(verdict.metadata.get("safety_violation", False))
     return CaseResult(
-        passed=verdict.passed,
+        passed=verdict.passed and not is_safety_violated,
         traces=logger_trace.traces,
         latency_ms=logger_trace.total_latency_ms,
         tokens_in=logger_trace.tokens_in,
         tokens_out=logger_trace.tokens_out,
         cost_usd=logger_trace.total_cost_usd,
+        safety_violated=is_safety_violated,
+        safety_verdict=verdict.metadata.get("safety_verdict"),
     )
 
 
@@ -335,10 +341,15 @@ def _stub_execute(task: Task, system_id: str) -> dict[str, Any]:
 
 
 async def run_single_case(
-    task_id: str, system_id: str, domain: str, config: BenchConfig, output_dir: Path
+    task_id: str,
+    system_id: str,
+    domain: str,
+    config: BenchConfig,
+    output_dir: Path,
+    split: str = "dev",
 ) -> bool:
     """Run a single case by task_id lookup."""
-    tasks = load_domain_tasks(domain)
+    tasks = load_domain_tasks(domain, split=split)
     task = next((t for t in tasks if t.task_id == task_id), None)
     if not task:
         logger.error("task_not_found", task_id=task_id, domain=domain)
