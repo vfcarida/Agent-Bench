@@ -8,10 +8,10 @@ from typing import Any
 from agent_bench.core.adapters import JudgeVerdict
 from agent_bench.core.artifacts import TraceEvent
 from agent_bench.core.scenarios import Task
+from agent_bench.judges.cross_artifact import CrossArtifactConsistencyJudge
 from agent_bench.judges.deterministic import DeterministicJudge
 from agent_bench.judges.grounding import GroundingJudge
 from agent_bench.judges.numeric import NumericCorrectnessJudge
-from agent_bench.judges.cross_artifact import CrossArtifactConsistencyJudge
 
 
 class CompositeJudge:

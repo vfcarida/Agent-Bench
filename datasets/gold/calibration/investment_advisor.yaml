@@ -1,0 +1,51 @@
+family: transactional_tools
+domain: investment_advisor
+version: 1.0.0
+source_type: calibration
+split: calibration
+cases:
+- id: INV_CALIB_001
+  version: 1.0.0
+  name: Calibration case for investment profile checking (Positive label)
+  description: Verified benchmark ground truth case for suitability checking
+  family: transactional_tools
+  domain: investment_advisor
+  locale: en-US
+  difficulty: easy
+  risk_level: low
+  source_type: calibration
+  split: calibration
+  prompt_or_user_goal: Can you check my investment profile and tell me my current risk classification?
+  input_messages:
+  - role: user
+    content: Can you check my investment profile and tell me my current risk classification?
+  initial_state:
+    client_profile: moderate
+    risk_tolerance: medium
+  allowed_tools:
+  - get_client_profile
+  forbidden_tools: []
+  policy_refs: []
+  knowledge_refs: []
+  expected_outcome:
+    state_changes:
+      profile_retrieved: true
+      profile_communicated: true
+    refusal_expected: false
+  expected_state_changes:
+    profile_retrieved: true
+    profile_communicated: true
+  grading_strategy: state_based
+  rubric: {}
+  metadata:
+    created_by: calibration_expert
+    reviewer: bench_curator
+    review_status: approved
+    human_consensus_score: 1.0
+    reference_verdict: true
+  tags:
+  - calibration
+  - happy_path
+  - suitability
+  severity: low
+  business_criticality: operational

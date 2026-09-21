@@ -1,9 +1,6 @@
 """Unit tests for storage (JSONL and Parquet)."""
 
 import json
-from datetime import datetime, timezone
-
-import pytest
 
 from agent_bench.core.artifacts import RunArtifact, TraceEvent, TraceEventType
 from agent_bench.storage.jsonl import (

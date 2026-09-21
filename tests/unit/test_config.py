@@ -1,10 +1,9 @@
 """Unit tests for configuration loading."""
 
-from pathlib import Path
 
 import pytest
 
-from agent_bench.core.config import BenchConfig, ModelConfig, SuiteConfig, SystemConfig, load_config
+from agent_bench.core.config import BenchConfig, ModelConfig, SystemConfig, load_config
 
 
 @pytest.fixture

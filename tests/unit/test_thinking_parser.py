@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 from agent_bench.graders.state_grader import GradeResult
 from agent_bench.graders.thinking_parser import (
-    ParsedResponse,
     ThinkingAwareGraderMiddleware,
     parse_thinking_response,
 )
@@ -17,7 +14,6 @@ from agent_bench.metrics.reasoning_metrics import (
     compute_reasoning_quality,
     compute_thinking_depth,
 )
-
 
 # ──────────────────────────────────────────────────────────────────
 # parse_thinking_response Tests
@@ -147,7 +143,7 @@ class TestThinkingAwareGraderMiddleware:
         mock = self._make_mock_grader()
         middleware = ThinkingAwareGraderMiddleware(mock)
 
-        result = middleware.grade(
+        middleware.grade(
             case={},
             actual_response="<think>reasoning here</think>The actual answer.",
         )

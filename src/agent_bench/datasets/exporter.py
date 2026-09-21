@@ -4,7 +4,6 @@ from pathlib import Path
 
 import yaml
 
-
 _TEMPLATE = {
     "domain": "DOMAIN_ID",
     "version": "1.0.0",

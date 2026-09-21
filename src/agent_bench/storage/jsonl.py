@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -67,7 +67,7 @@ def save_run_manifest(artifact: RunArtifact, output_dir: Path) -> Path:
         "duration_ms": artifact.duration_ms,
         "metrics": artifact.metrics,
         "metadata": artifact.metadata,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
     path = output_dir / f"{artifact.run_id}_manifest.json"
     temp_path = path.with_suffix(path.suffix + ".tmp")
@@ -95,8 +95,7 @@ def save_metrics_jsonl(
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
     try:
         with open(temp_path, "w", encoding="utf-8") as f:
-            for m in metrics:
-                f.write(json.dumps(m, default=str) + "\n")
+            f.writelines(json.dumps(m, default=str) + "\n" for m in metrics)
             f.flush()
             os.fsync(f.fileno())
         os.replace(temp_path, output_path)

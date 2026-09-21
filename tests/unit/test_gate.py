@@ -2,8 +2,8 @@
 
 import json
 import os
+
 import pytest
-from pathlib import Path
 
 from agent_bench.cli.gate import check_gate
 

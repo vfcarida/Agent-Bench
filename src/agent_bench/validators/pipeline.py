@@ -3,13 +3,13 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from .schema_validator import validate_eval_case, ValidationResult
 from .consistency_checker import (
+    check_numeric_consistency,
     check_state_consistency,
     check_tool_consistency,
-    check_numeric_consistency,
 )
 from .dedup_checker import find_duplicates
+from .schema_validator import ValidationResult, validate_eval_case
 
 
 def normalize_case(case: dict[str, Any]) -> dict[str, Any]:

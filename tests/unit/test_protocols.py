@@ -1,7 +1,8 @@
 """Unit tests for Clean Architecture protocols."""
 
-import pytest
 from typing import Any
+
+import pytest
 
 from agent_bench.core.adapters import JudgeVerdict, ToolCallResult
 from agent_bench.core.artifacts import TraceEvent
@@ -103,6 +104,6 @@ async def test_sample_runner_execution() -> None:
         initial_state={"key": "val"},
     )
 
-    result, traces = await runner.run_task(task, env)
+    result, _traces = await runner.run_task(task, env)
     assert result["response"] == "done"
     assert result["final_state"] == {"key": "val"}

@@ -8,11 +8,14 @@ while the base model stays loaded in VRAM.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from agent_bench.core.adapters import ModelAdapter, ModelResponse
+
+if TYPE_CHECKING:
+    from agent_bench.models.adapter_manager import AdapterManager
 
 logger = structlog.get_logger()
 
@@ -32,7 +35,7 @@ class PEFTModelAdapter(ModelAdapter):
 
     def __init__(
         self,
-        adapter_manager: Any,  # AdapterManager — avoid circular import
+        adapter_manager: AdapterManager,
         adapter_name: str,
         model_id: str | None = None,
     ):

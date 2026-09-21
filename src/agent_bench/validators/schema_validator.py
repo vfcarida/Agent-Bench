@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-
 VALID_FAMILIES = {"transactional_tools", "knowledge_rag_reasoning", "business_long_horizon", "security_guardrails"}
 VALID_SOURCE_TYPES = {"human_gold", "synthetic_shadow", "synthetic_candidate", "adversarial", "calibration"}
 VALID_SPLITS = {"dev", "holdout", "calibration", "regression", "smoke"}
@@ -72,11 +71,10 @@ def validate_eval_case(case: dict[str, Any]) -> ValidationResult:
             )
 
     # Consistency: expected_state_changes requires initial_state
-    if case.get("expected_state_changes"):
-        if not case.get("initial_state"):
-            result.errors.append(
-                "expected_state_changes is non-empty but initial_state is missing"
-            )
+    if case.get("expected_state_changes") and not case.get("initial_state"):
+        result.errors.append(
+            "expected_state_changes is non-empty but initial_state is missing"
+        )
 
     # Consistency: allowed_tools and forbidden_tools must not overlap
     allowed = set(case.get("allowed_tools") or [])
@@ -156,7 +154,7 @@ def validate_eval_case(case: dict[str, Any]) -> ValidationResult:
                                 result.errors.append(f"rubric['dimensions'][{i}] missing required key: 'name'")
                             elif not isinstance(dim["name"], str):
                                 result.errors.append(f"rubric['dimensions'][{i}]['name'] must be a string")
-                            
+
                             if "importance" in dim:
                                 importance = dim["importance"]
                                 if not isinstance(importance, str):
@@ -166,7 +164,7 @@ def validate_eval_case(case: dict[str, Any]) -> ValidationResult:
                                         f"rubric['dimensions'][{i}]['importance'] must be one of: "
                                         "['critical', 'high', 'medium', 'low']"
                                     )
-                            
+
                             if "keywords" in dim:
                                 keywords = dim["keywords"]
                                 if not isinstance(keywords, list):

@@ -1,6 +1,7 @@
 """Metrics report aggregation for benchmark runs."""
 import math
 from dataclasses import dataclass, field
+from typing import Any
 
 from agent_bench.graders.state_grader import GradeResult
 from agent_bench.metrics.expanded import (
@@ -38,8 +39,8 @@ def _percentile(sorted_values: list[float], p: float) -> float:
     if not sorted_values:
         return 0.0
     idx = (p / 100.0) * (len(sorted_values) - 1)
-    lower = int(math.floor(idx))
-    upper = int(math.ceil(idx))
+    lower = math.floor(idx)
+    upper = math.ceil(idx)
     if lower == upper:
         return sorted_values[lower]
     frac = idx - lower
@@ -62,8 +63,6 @@ def _compute_pass_at_k(n: int, c: int, k: int) -> float:
         denominator *= (n - i)
     return 1.0 - numerator / denominator
 
-
-from typing import Any
 
 def build_metrics_report(grade_results: list[GradeResult], run_metadata: dict[str, Any]) -> MetricsReport:
     """Build a MetricsReport from grade results and run metadata."""

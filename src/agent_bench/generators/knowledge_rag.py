@@ -1,10 +1,16 @@
 """Knowledge RAG / Investment assistant-like synthetic case generator."""
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import GenerationResult
-from .perturbations import add_ambiguity, add_urgency, apply_noise, inject_distraction, vary_formality
+from .perturbations import (
+    add_ambiguity,
+    add_urgency,
+    apply_noise,
+    inject_distraction,
+    vary_formality,
+)
 
 # Hardcoded data pools
 _PROFILES = ["conservador", "moderado", "arrojado"]
@@ -262,7 +268,7 @@ class KnowledgeRagGenerator:
             "fundo multimercado D+30", "acoes", "cripto", "COE",
         ])
 
-        rules = _SUITABILITY_RULES[profile]
+        _SUITABILITY_RULES[profile]
         is_violation = (pct > 30) or (product in ["cripto", "derivativos"] and profile != "arrojado")
 
         prompt_template = rng.choice(_POLICY_PROMPTS)
@@ -378,7 +384,7 @@ class KnowledgeRagGenerator:
             "metadata": {
                 "created_by": "KnowledgeRagGenerator",
                 "generator_model": "deterministic_template",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             },
         }
 

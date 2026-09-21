@@ -172,7 +172,7 @@ def detect_contamination(
 def _load_cases_from_yaml(path: Path) -> list[dict[str, Any]]:
     """Load cases or tasks from a YAML file."""
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except (yaml.YAMLError, OSError):
         return []

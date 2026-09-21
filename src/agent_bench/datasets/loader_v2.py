@@ -5,8 +5,8 @@ from typing import Any
 
 import yaml
 
-from agent_bench.core.schema_v2 import EvalCase
 from agent_bench.core.schema_migration import migrate_fixture_file
+from agent_bench.core.schema_v2 import EvalCase
 
 
 def _load_yaml_cases(file_path: Path) -> list[dict[str, Any]]:

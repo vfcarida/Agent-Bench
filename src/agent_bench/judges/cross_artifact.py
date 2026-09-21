@@ -59,7 +59,7 @@ class CrossArtifactConsistencyJudge:
             )
 
         # Extract numeric facts from each artifact
-        artifact_facts = []
+        artifact_facts: list[dict[str, Any]] = []
         for artifact in artifacts:
             facts = _extract_numeric_facts(artifact.get("content", ""))
             facts.update(_extract_named_values(artifact.get("content", "")))

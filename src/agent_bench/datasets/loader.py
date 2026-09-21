@@ -125,12 +125,6 @@ def _resolve_dataset_file(domain_id: str, split: str, data_dir: Path | None) -> 
     if adv_path.exists():
         return adv_path
 
-    # Legacy fallback: data/fixtures/<domain>.yaml (dev only)
-    if split == "dev":
-        legacy_path = _FIXTURES_DIR / f"{domain_id}.yaml"
-        if legacy_path.exists():
-            return legacy_path
-
     return None
 
 
@@ -145,7 +139,6 @@ def load_domain_tasks(
     1. datasets/gold/<split>/<domain>.yaml (Canonical Gold)
     2. datasets/synthetic/**/<domain>.yaml
     3. datasets/adversarial/<domain>.yaml
-    4. data/fixtures/<domain>.yaml (dev split fallback only)
 
     Enforces that 'holdout' split is never loaded from data/fixtures.
     """
@@ -153,7 +146,7 @@ def load_domain_tasks(
     if not domain_file or not domain_file.exists():
         return []
 
-    with open(domain_file, "r", encoding="utf-8") as f:
+    with open(domain_file, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     if not data:

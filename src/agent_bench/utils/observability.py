@@ -1,10 +1,11 @@
 """Observability hooks: span-based tracing compatible with OpenTelemetry."""
 
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Generator
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 import structlog
@@ -37,7 +38,7 @@ class Span:
     def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         self.events.append({
             "name": name,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "attributes": attributes or {},
         })
 
@@ -124,7 +125,7 @@ class SpanCollector:
             "total_duration_ms": sum(durations),
             "avg_duration_ms": sum(durations) / len(durations) if durations else 0,
             "error_count": len(errors),
-            "span_names": list(set(s.name for s in self._spans)),
+            "span_names": list({s.name for s in self._spans}),
         }
 
     def reset(self) -> None:

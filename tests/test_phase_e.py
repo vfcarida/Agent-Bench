@@ -1,35 +1,42 @@
 """Tests for Phase E: schema v2, validators, generators, graders, metrics."""
-import json
 from pathlib import Path
 
-import pytest
 import yaml
 
-from agent_bench.core.schema_v2 import EvalCase, Family, SourceType, Split, Difficulty, RiskLevel, GradingStrategy
-from agent_bench.core.schema_migration import migrate_task_to_v2, migrate_fixture_file
-from agent_bench.validators.schema_validator import validate_eval_case, ValidationResult
-from agent_bench.validators.consistency_checker import check_state_consistency, check_tool_consistency, check_numeric_consistency
-from agent_bench.validators.dedup_checker import compute_case_hash, find_duplicates
-from agent_bench.validators.pipeline import run_validation_pipeline, normalize_case
-from agent_bench.generators.transactional import TransactionalGenerator
-from agent_bench.generators.knowledge_rag import KnowledgeRagGenerator
+from agent_bench.core.schema_migration import migrate_fixture_file, migrate_task_to_v2
+from agent_bench.core.schema_v2 import (
+    Difficulty,
+    EvalCase,
+    Family,
+    GradingStrategy,
+    SourceType,
+    Split,
+)
 from agent_bench.generators.business_horizon import BusinessHorizonGenerator
+from agent_bench.generators.knowledge_rag import KnowledgeRagGenerator
+from agent_bench.generators.perturbations import add_urgency, apply_noise, inject_distraction
 from agent_bench.generators.security import SecurityGenerator
-from agent_bench.generators.perturbations import apply_noise, add_urgency, add_ambiguity, inject_distraction
-from agent_bench.graders.state_grader import StateGrader, GradeResult
-from agent_bench.graders.tool_call_grader import ToolCallGrader
-from agent_bench.graders.rubric_grader import RubricGrader
+from agent_bench.generators.transactional import TransactionalGenerator
 from agent_bench.graders.composite_grader import CompositeGrader
+from agent_bench.graders.rubric_grader import RubricGrader
+from agent_bench.graders.state_grader import GradeResult, StateGrader
+from agent_bench.graders.tool_call_grader import ToolCallGrader
 from agent_bench.metrics.expanded import (
+    categorize_failures,
     compute_confidence_interval,
+    compute_cost_per_success,
+    compute_policy_compliance_rate,
+    compute_state_accuracy,
     compute_tool_call_precision,
     compute_tool_call_recall,
-    compute_policy_compliance_rate,
-    compute_cost_per_success,
-    categorize_failures,
-    compute_state_accuracy,
 )
-
+from agent_bench.validators.consistency_checker import (
+    check_state_consistency,
+    check_tool_consistency,
+)
+from agent_bench.validators.dedup_checker import compute_case_hash, find_duplicates
+from agent_bench.validators.pipeline import normalize_case, run_validation_pipeline
+from agent_bench.validators.schema_validator import validate_eval_case
 
 # === Schema V2 ===
 
@@ -261,7 +268,7 @@ class TestSecurityGenerator:
     def test_generates_all_categories(self):
         gen = SecurityGenerator()
         results = gen.generate_batch(40, seed=42)
-        domains = set(r.case["domain"] for r in results)
+        domains = {r.case["domain"] for r in results}
         assert len(domains) >= 3
 
     def test_expert_difficulty(self):
@@ -375,7 +382,7 @@ class TestExpandedMetrics:
         assert 0.7 < mean < 0.95
 
     def test_confidence_interval_single(self):
-        mean, lower, upper = compute_confidence_interval([0.5])
+        mean, _lower, _upper = compute_confidence_interval([0.5])
         assert mean == 0.5
 
     def test_tool_call_precision(self):

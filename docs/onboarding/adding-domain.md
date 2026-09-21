@@ -8,7 +8,7 @@ bench export-dataset-template <domain_id>
 
 ## 2. Define Tasks
 
-Edit `data/fixtures/<domain_id>.yaml`:
+Edit `datasets/gold/dev/<domain_id>.yaml`:
 
 - Define policy (limits, rules, constraints)
 - List available tools

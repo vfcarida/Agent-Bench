@@ -1,126 +1,138 @@
-# Como Adicionar um Domínio
+# How to Add a Benchmark Domain
 
-## Visão Geral
+This guide details the procedure for authoring, configuring, validating, and registering a new evaluation domain within Agent-Bench.
 
-Um domínio representa uma família de agentes com comportamentos similares (ex: `pix`, `seguros`, `renegociacao`). Cada domínio tem seu próprio config, dataset e graders.
+---
 
-## Passo a Passo
+## 1. Domain Concept
 
-### 1. Criar o Domain Config
+A **domain** represents an operational category of agent tasks sharing common tool sets, regulatory guardrails, and scoring profiles. Existing domains include:
+- `pix_assist`: Instant banking payment flows, Central Bank regulations, and transaction limits.
+- `investment_advisor`: Financial product suitability, fixed income calculations, and risk disclosures.
+- `sme_business_advisor`: Small business tax calculations, DRE statements, and cash flow projections.
+- `cyber_sandbox`: Defensive and offensive security, privilege escalation, and prompt injection refusal.
 
-```bash
-mkdir -p domains/<nome_dominio>
-```
+---
 
-Criar `domains/<nome_dominio>/domain_config.yaml`:
+## 2. Step-by-Step Domain Addition
+
+### Step 1: Define Systems Configuration (`configs/domains/<domain_id>.yaml`)
+
+Create `configs/domains/<domain_id>.yaml` to define candidate agent architectures and their allowed toolsets:
 
 ```yaml
-domain:
-  name: "pix_whatsapp"
-  display_name: "PIX WhatsApp"
-  version: "1.0.0"
-  owner: "squad-pix"
+systems:
+  - system_id: prompt_only_gpt4
+    architecture: prompt_only
+    model: gpt-4o
+    tools: []
+    retrieval: null
+    memory: false
+    max_steps: 1
 
-agent:
-  entry_point: "agents.pix.main:run"
-  timeout_ms: 30000
-  max_turns: 10
-
-graders:
-  - type: "state_accuracy"
-  - type: "tool_call_match"
-  - type: "policy_compliance"
-    policies_file: "domains/pix_whatsapp/policies.yaml"
-
-scoring_profile: "functional"
-
-thresholds:
-  success_rate: 0.85
-  policy_compliance_rate: 0.95
-  latency_p95_ms: 5000
+  - system_id: tool_calling_reactive_gpt4
+    architecture: tool_calling_reactive
+    model: gpt-4o
+    tools:
+      - check_balance
+      - validate_pix_key
+      - execute_pix_transfer
+    retrieval: null
+    memory: false
+    max_steps: 10
 ```
 
-### 2. Escrever Seed Cases (mínimo 10)
+### Step 2: Author Golden Evaluation Cases (`datasets/gold/dev/<domain_id>.yaml`)
 
-Criar `domains/<nome_dominio>/cases/seed/` com casos YAML manuais. Estes são a base para geração sintética e devem cobrir:
+Author task cases following the typed **EvalCase v2** schema:
 
-- Happy path principal (3-4 casos)
-- Variações de input (2-3 casos)
-- Edge cases conhecidos (2-3 casos)
-- Ao menos 1 caso adversarial
+```yaml
+family: transactional_tools
+domain: my_domain
+version: 1.0.0
+source_type: human_gold
+split: dev
+cases:
+  - id: MY_001
+    version: 1.0.0
+    name: Standard Happy Path Flow
+    description: User requests valid operation
+    family: transactional_tools
+    domain: my_domain
+    locale: pt-BR
+    difficulty: medium
+    risk_level: medium
+    source_type: human_gold
+    split: dev
+    prompt_or_user_goal: Execute operation with key 123
+    input_messages:
+      - role: user
+        content: Execute operation with key 123
+    initial_state:
+      balance: 1000.0
+    allowed_tools:
+      - validate_key
+      - execute_action
+    forbidden_tools: []
+    expected_outcome:
+      state_changes:
+        operation_done: true
+      refusal_expected: false
+    expected_state_changes:
+      operation_done: true
+    evidence_requirements:
+      - tool_calling
+    grading_strategy: state_based
+    rubric: {}
+    tags:
+      - happy_path
+    severity: medium
+    business_criticality: operational
+    expected_refusal_mode: none
+```
 
-### 3. Gerar Casos Sintéticos
+### Step 3: Register in Benchmark Suite (`configs/suites/<suite_id>.yaml`)
+
+Include your new domain in an existing suite or create a new suite manifest:
+
+```yaml
+suite_id: my_domain_basic_v1
+name: My Domain Basic Evaluation Suite
+version: 1.0.0
+domains:
+  - my_domain
+systems:
+  - prompt_only_gpt4
+  - tool_calling_reactive_gpt4
+weighting_profile: transactional_high_risk
+repeat_n: 3
+seed: 42
+```
+
+### Step 4: Validate and Verify
+
+Run validation checks to verify schema and configuration correctness:
 
 ```bash
-bench generate --domain <nome_dominio> --count 50 --seed 42
+# 1. Validate configuration files
+bench --config-dir configs validate-config
+
+# 2. Check gold dataset integrity
+python scripts/check_gold_integrity.py
+
+# 3. Check for contamination leakage
+bench check-contamination
+
+# 4. Run single case smoke test
+bench --config-dir configs run-case MY_001 --system tool_calling_reactive_gpt4 --domain my_domain
 ```
 
-Saída em `domains/<nome_dominio>/cases/synthetic/`. Cada caso gerado inclui `source_type: synthetic_candidate`.
+---
 
-### 4. Validar Casos Gerados
+## 3. Dataset Lifecycle & Splits
 
-```bash
-bench validate --domain <nome_dominio> --split dev
-```
-
-Verificações automáticas:
-- Schema válido (todos campos obrigatórios presentes)
-- Sem PII detectável
-- Tools referenciadas existem no agent config
-- Expected state fields são válidos
-
-### 5. Executar e Revisar
-
-```bash
-bench run-suite --domain <nome_dominio> --split dev --report
-```
-
-Revisar o report. Ajustar casos com resultados ambíguos.
-
-### 6. Promover para Gold
-
-Após revisão humana (2 anotadores, concordância >= 0.7):
-
-```bash
-bench promote --domain <nome_dominio> --cases <ids> --reviewer "fulano"
-```
-
-## Estrutura de Arquivos
-
-```
-domains/
-└── <nome_dominio>/
-    ├── domain_config.yaml
-    ├── policies.yaml
-    ├── dataset_card.md
-    ├── cases/
-    │   ├── seed/          # Casos iniciais manuais
-    │   ├── synthetic/     # Gerados automaticamente
-    │   ├── gold/          # Promovidos e validados
-    │   └── adversarial/   # Red team
-    └── graders/           # Graders custom (opcional)
-        └── custom_policy_grader.py
-```
-
-## Campos Obrigatórios em Cada Caso
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| `case_id` | string (UUID) | Identificador único |
-| `version` | string | Versão do schema (ex: "2.0") |
-| `domain` | string | Nome do domínio |
-| `split` | string | dev/holdout/smoke/regression/calibration |
-| `input` | object | Mensagem do usuário + contexto |
-| `expected_outcome` | object | Resultado esperado |
-| `grading_strategy` | string | Estratégia de avaliação |
-| `metadata` | object | Lineage, timestamps, source_type |
-
-## Checklist Final
-
-- [ ] domain_config.yaml criado e válido
-- [ ] Mínimo 10 seed cases escritos
-- [ ] `bench validate` passa sem erros
-- [ ] Pelo menos 5 casos gold promovidos
-- [ ] dataset_card.md preenchido
-- [ ] Thresholds definidos no config
-- [ ] Smoke suite funciona em < 30s
+Agent-Bench enforces strict split isolation:
+- `dev`: Active development and prompt optimization.
+- `holdout`: Held-out evaluation tasks reserved strictly for final benchmark scoring. Never loaded by development runs.
+- `calibration`: Labeled samples used for calibrating LLM judges against human annotators.
+- `regression`: Static golden cases run in CI to detect model regressions.

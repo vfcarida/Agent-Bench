@@ -25,7 +25,14 @@ COPY README.md ./
 
 # Install package dependencies
 RUN pip install --upgrade pip && \
-    pip install -e ".[all]"
+    pip install -e ".[dev,openai,anthropic]"
+
+# Create unprivileged user for secure sandboxed execution
+RUN useradd -u 1000 -m appuser && \
+    mkdir -p /app/data/runs && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 # Default entrypoint runs the bench CLI
 ENTRYPOINT ["bench"]

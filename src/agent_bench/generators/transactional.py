@@ -1,11 +1,17 @@
 """Transactional (PIX-like) synthetic case generator."""
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import GenerationResult
-from .perturbations import add_ambiguity, add_urgency, apply_noise, inject_distraction, vary_formality
+from .perturbations import (
+    add_ambiguity,
+    add_urgency,
+    apply_noise,
+    inject_distraction,
+    vary_formality,
+)
 
 # Hardcoded data pools
 _FIRST_NAMES = [
@@ -464,7 +470,7 @@ class TransactionalGenerator:
             "metadata": {
                 "created_by": "TransactionalGenerator",
                 "generator_model": "deterministic_template",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             },
         }
 

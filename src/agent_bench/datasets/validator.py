@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -58,7 +57,7 @@ VALID_TAGS = {
     "incident_response", "isolation", "data_exfiltration",
     "credential_harvesting", "patch_management", "compliance",
     "dns", "threat_detection", "short_term", "etf", "previdencia",
-    "allocation", "multi_product", "conservative", "regulatory",
+    "allocation", "multi_product", "conservative", "regulatory", "calibration",
 }
 
 # Valid answer formats (FINESSE-Bench-inspired)
@@ -101,30 +100,42 @@ def validate_dataset(path: Path) -> ValidationResult:
         result.issues.append(ValidationIssue("warning", "", "domain", "Missing 'domain' field"))
     if "version" not in data:
         result.issues.append(ValidationIssue("warning", "", "version", "Missing 'version' field"))
-    if "tasks" not in data:
+    raw_items = data.get("cases") if "cases" in data else data.get("tasks")
+    if raw_items is None:
         result.valid = False
-        result.issues.append(ValidationIssue("error", "", "tasks", "Missing 'tasks' field"))
+        result.issues.append(ValidationIssue("error", "", "tasks", "Missing 'cases' or 'tasks' field"))
         return result
 
-    tasks = data["tasks"]
-    if not isinstance(tasks, list):
+    if not isinstance(raw_items, list):
         result.valid = False
-        result.issues.append(ValidationIssue("error", "", "tasks", "'tasks' must be a list"))
+        result.issues.append(ValidationIssue("error", "", "tasks", "'tasks' or 'cases' must be a list"))
         return result
 
-    result.task_count = len(tasks)
+    result.task_count = len(raw_items)
     task_ids = set()
 
-    for i, task in enumerate(tasks):
-        task_id = task.get("task_id", f"task_{i}")
+    for i, task in enumerate(raw_items):
+        task_id = str(task.get("id") or task.get("task_id") or f"task_{i}")
+        name = task.get("name") or task.get("prompt_or_user_goal") or task.get("prompt")
+        input_messages = task.get("input_messages")
+        if not input_messages and name:
+            input_messages = [{"role": "user", "content": name}]
 
-        # Check required fields
-        for field_name in REQUIRED_TASK_FIELDS:
-            if field_name not in task:
-                result.valid = False
-                result.issues.append(
-                    ValidationIssue("error", task_id, field_name, f"Missing required field '{field_name}'")
-                )
+        if not task.get("id") and not task.get("task_id"):
+            result.valid = False
+            result.issues.append(
+                ValidationIssue("error", task_id, "id", "Missing required field 'id' or 'task_id'")
+            )
+        if not name:
+            result.valid = False
+            result.issues.append(
+                ValidationIssue("error", task_id, "name", "Missing required field 'name' or 'prompt_or_user_goal'")
+            )
+        if not input_messages:
+            result.valid = False
+            result.issues.append(
+                ValidationIssue("error", task_id, "input_messages", "Missing required field 'input_messages'")
+            )
 
         # Check duplicate IDs
         if task_id in task_ids:
@@ -132,23 +143,23 @@ def validate_dataset(path: Path) -> ValidationResult:
             result.issues.append(ValidationIssue("error", task_id, "task_id", "Duplicate task_id"))
         task_ids.add(task_id)
 
-        # Validate enums
-        severity = task.get("severity", "medium")
-        if severity not in VALID_SEVERITIES:
+        # Validate enums if present
+        severity = task.get("severity")
+        if severity is not None and severity not in VALID_SEVERITIES:
             result.issues.append(
                 ValidationIssue("error", task_id, "severity", f"Invalid severity: {severity}")
             )
             result.valid = False
 
-        criticality = task.get("business_criticality", "operational")
-        if criticality not in VALID_CRITICALITIES:
+        criticality = task.get("business_criticality")
+        if criticality is not None and criticality not in VALID_CRITICALITIES:
             result.issues.append(
                 ValidationIssue("error", task_id, "business_criticality", f"Invalid criticality: {criticality}")
             )
             result.valid = False
 
-        refusal = task.get("expected_refusal_mode", "none")
-        if refusal not in VALID_REFUSAL_MODES:
+        refusal = task.get("expected_refusal_mode")
+        if refusal is not None and refusal not in VALID_REFUSAL_MODES:
             result.issues.append(
                 ValidationIssue("error", task_id, "expected_refusal_mode", f"Invalid refusal mode: {refusal}")
             )
@@ -227,9 +238,12 @@ def validate_dataset(path: Path) -> ValidationResult:
 
 
 def validate_all_datasets(fixtures_dir: Path) -> list[ValidationResult]:
-    """Validate all dataset files in a directory."""
+    """Validate all dataset files in a directory (supports recursive discovery)."""
     results = []
-    for path in sorted(fixtures_dir.glob("*.yaml")):
+    yaml_files = list(fixtures_dir.glob("*.yaml"))
+    if not yaml_files:
+        yaml_files = list(fixtures_dir.glob("**/*.yaml"))
+    for path in sorted(yaml_files):
         if path.name.endswith("_template.yaml"):
             continue
         results.append(validate_dataset(path))

@@ -3,7 +3,7 @@
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +40,7 @@ class ProvenanceRegistry:
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         data = {
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
             "total_datasets": len(self._records),
             "datasets": [self._record_to_dict(r) for r in self._records],
         }
@@ -77,7 +77,7 @@ class ProvenanceRegistry:
                 task_count=task_count,
                 owner=owner,
                 description=description,
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(UTC).isoformat(),
             )
             self._records.append(record)
             existing = record

@@ -5,12 +5,11 @@ Extended with Athena lineage tracking to display model genealogy
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from agent_bench.models.lineage import AthenaLineage, format_lineage_compact, format_lineage_display
-
 
 LEADERBOARD_PATH = Path("data/reports/leaderboard.json")
 
@@ -68,7 +67,7 @@ def update_leaderboard(
             "latency_score": sc["latency_score"],
             "reliability_score": sc["reliability_score"],
             "weighting_profile": sc.get("weighting_profile", ""),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         # Merge lineage data if available
         entry.update(lineage_data)
@@ -78,7 +77,7 @@ def update_leaderboard(
     entries.sort(key=lambda e: e["global_score"], reverse=True)
 
     leaderboard = {
-        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "last_updated": datetime.now(UTC).isoformat(),
         "total_entries": len(entries),
         "entries": entries,
     }

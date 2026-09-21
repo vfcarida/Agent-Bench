@@ -5,15 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from agent_bench.models.lineage import (
     AthenaLineage,
     format_lineage_compact,
     format_lineage_display,
     load_athena_metadata,
 )
-
 
 # ──────────────────────────────────────────────────────────────────
 # AthenaLineage Data Model Tests
@@ -251,7 +248,7 @@ class TestLeaderboardLineageIntegration:
 
     def test_update_leaderboard_with_lineage(self, tmp_path: Path):
         """Leaderboard entries should include lineage data."""
-        from agent_bench.reports.leaderboard import update_leaderboard, get_leaderboard
+        from agent_bench.reports.leaderboard import get_leaderboard, update_leaderboard
 
         lineage = AthenaLineage(
             model_name="athena-merged",
@@ -283,7 +280,7 @@ class TestLeaderboardLineageIntegration:
 
     def test_update_leaderboard_without_lineage(self, tmp_path: Path):
         """Leaderboard without lineage should work as before."""
-        from agent_bench.reports.leaderboard import update_leaderboard, get_leaderboard
+        from agent_bench.reports.leaderboard import get_leaderboard, update_leaderboard
 
         scorecards = [{
             "system_id": "test-system",

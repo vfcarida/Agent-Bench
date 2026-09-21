@@ -12,12 +12,12 @@ from __future__ import annotations
 import asyncio
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import structlog
 
-from agent_bench.core.adapters import ModelAdapter, ModelResponse
+from agent_bench.core.adapters import ModelResponse
 
 logger = structlog.get_logger()
 
@@ -252,11 +252,12 @@ class AdapterManager:
 
         if hasattr(self._tokenizer, "apply_chat_template"):
             try:
-                return self._tokenizer.apply_chat_template(
+                formatted = self._tokenizer.apply_chat_template(
                     messages,
                     tokenize=False,
                     add_generation_prompt=True,
                 )
+                return str(formatted)
             except Exception:
                 pass
 
@@ -338,7 +339,6 @@ class AdapterManager:
         max_tokens: int = 4096,
         seed: int | None = None,
     ) -> ModelResponse:
-        """Async wrapper around synchronous generation."""
         return await asyncio.to_thread(
             self.generate_sync, messages, temperature, max_tokens, seed
         )

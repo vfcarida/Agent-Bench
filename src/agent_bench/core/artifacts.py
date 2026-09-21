@@ -1,7 +1,7 @@
 """Run artifacts and trace events."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -25,7 +25,7 @@ class TraceEventType(str, Enum):
 @dataclass
 class TraceEvent:
     event_type: TraceEventType
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     data: dict[str, Any] = field(default_factory=dict)
     event_id: str = field(default_factory=lambda: str(uuid4()))
     parent_id: str | None = None
@@ -37,7 +37,7 @@ class RunArtifact:
     suite_id: str = ""
     system_id: str = ""
     model_id: str = ""
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
     config_hash: str = ""
     benchmark_version: str = ""
@@ -56,4 +56,4 @@ class RunArtifact:
         return None
 
     def finalize(self) -> None:
-        self.finished_at = datetime.now(timezone.utc)
+        self.finished_at = datetime.now(UTC)

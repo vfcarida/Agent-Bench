@@ -1,11 +1,9 @@
 """Report generation from run artifacts."""
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from jinja2 import Template
-
 
 _MD_TEMPLATE = """# Benchmark Report
 

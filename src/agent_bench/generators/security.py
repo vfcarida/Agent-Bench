@@ -1,6 +1,6 @@
 """Security guardrails / adversarial synthetic case generator."""
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import GenerationResult
@@ -293,7 +293,7 @@ class SecurityGenerator:
             "metadata": {
                 "created_by": "SecurityGenerator",
                 "generator_model": "deterministic_template",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "attack_category": category,
                 "attack_subcategory": subcategory,
             },

@@ -1,8 +1,8 @@
 """Unit tests for leaderboard."""
 
 import json
+
 import pytest
-from pathlib import Path
 
 from agent_bench.reports.leaderboard import (
     get_leaderboard,

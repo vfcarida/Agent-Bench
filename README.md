@@ -3,6 +3,7 @@
   <p><strong>Professional MLOps Benchmark Framework for Evaluating LLM Agents as Complete Systems</strong></p>
 
   [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://python.org)
+  [![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/agent-bench/agent-bench/releases)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
   [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/agent-bench/agent-bench/actions)
   [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/agent-bench/agent-bench/actions)
@@ -14,6 +15,8 @@
 ## 💼 Executive Vision
 
 Evaluating LLM-based agents requires moving beyond static, single-turn correctness checks. Enterprise agent systems operate in dynamic workflows—utilizing multi-step reasoning, invoking tools, retrieving knowledge, and conforming to strict safety guardrails.
+
+> **Enterprise Positioning**: **Agent-Bench** is an enterprise-grade evaluation ecosystem specifically engineered for production agent workflows (such as Brazilian PIX banking, CRM compliance, and transactional e-commerce). It stands distinct from academic benchmarks (such as Tsinghua's AgentBench or general-purpose QA benchmarks) by prioritizing **zero-tolerance hard safety gating** (refusal failures can never be numerically compensated), **stateful environment sandboxing** (live balance mutations and state diff assertions), **autonomous multi-turn ReAct reasoning loops**, **unbiased per-task Pass@k & Pass^k reliability**, **inter-annotator calibration** (Cohen's Kappa & Krippendorff's Alpha), and **measured execution traces & real financial token accounting**.
 
 **Agent-Bench** provides an end-to-end testing and analytics ecosystem to assess the complete agent lifecycle across dynamic domains. It measures:
 - 🎯 **Functional Correctness:** State assertion accuracy, execution of multi-turn plans, and tool call fidelity.
@@ -59,7 +62,16 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
 6. **Dataset Governance, Split Discipline & Contamination Gating:**
    - **Canonical Gold Tree:** `datasets/gold/<split>/<domain>.yaml` serves as the single authoritative dataset hierarchy, using the typed `EvalCase v2` schema.
    - **Strict Split Isolation:** Split-aware loader isolates `dev`, `holdout`, `calibration`, `regression`, and `smoke`. Loading holdout content from legacy fixture paths is strictly prohibited by regression gates.
-   - **Offline Contamination Gate:** An automated gate (`scripts/check_contamination.py` / `bench check-contamination`) runs in offline CI, testing for verbatim (SHA-256) and paraphrase (token Jaccard) leakage from holdout sets into dev or synthetic training pools.
+   - **Offline Contamination Gate:** An automated gate (`bench check-contamination`) runs in offline CI, testing for verbatim (SHA-256) and paraphrase (token Jaccard) leakage from holdout sets into dev or synthetic training pools.
+
+7. **Autonomous Multi-Turn ReAct Reasoning Loop:**
+   `DefaultAgentRunner` drives an autonomous ReAct loop: invoking model tools against the stateful `TaskEnvironment`, appending observations to the conversational context, and re-querying until task termination or step exhaustion (`max_steps`). Loop stall detection guards against repetitive static mock stagnation.
+
+8. **Inter-Annotator Agreement & Calibration:**
+   Measures grading dataset consistency using Cohen's Kappa (pairwise) and Krippendorff's Alpha (multi-rater reliability across arbitrary nominal labels) via `bench check-agreement`.
+
+9. **Rich Interactive Visual Trace Exploration:**
+   Inspect prompts, `<think>` internal reasoning blocks, tool arguments, environment observations, and judge verdicts via Rich terminal panels (`bench view-traces`).
 
 ---
 
@@ -168,10 +180,19 @@ bench --config-dir configs run-suite pix_basic_v1
 # 3. Run a specific task case
 bench --config-dir configs run-case PIX_001 --system tool_calling_reactive_gpt4 --domain pix_assist
 
-# 4. Generate Markdown / HTML execution reports
-bench generate-report <run-id>
+# 4. View interactive execution traces in rich terminal panels
+bench view-traces <run-id> --limit 20
 
-# 5. Compare two evaluation runs side-by-side
+# 5. Check inter-annotator calibration & agreement (Cohen's Kappa & Krippendorff's Alpha)
+bench check-agreement --annotations datasets/gold/calibration/annotator_agreement.yaml
+
+# 6. Check for holdout contamination and data leakage
+bench check-contamination --threshold 0.80
+
+# 7. Generate Markdown / HTML execution reports
+bench generate-report <run-id> --format html
+
+# 8. Compare two evaluation runs side-by-side
 bench compare-runs <run-id-1> <run-id-2>
 ```
 

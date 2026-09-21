@@ -2,7 +2,6 @@
 
 import pytest
 
-from agent_bench.core.artifacts import TraceEvent, TraceEventType
 from agent_bench.core.scenarios import RefusalMode, Task
 from agent_bench.judges.composite import CompositeJudge
 
@@ -84,5 +83,5 @@ async def test_all_judges(judge):
 async def test_refusal_with_composite(judge):
     task = _make_task(expected_refusal_mode=RefusalMode.POLITE_DECLINE)
     result = {"response": "Cannot do that.", "refusal": True}
-    final, all_v = await judge.evaluate(task, result, [])
+    final, _all_v = await judge.evaluate(task, result, [])
     assert final.passed is True

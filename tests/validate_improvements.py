@@ -1,12 +1,15 @@
 """Quick validation of all new modules."""
+import asyncio
+import random
+
+from agent_bench.core.scenarios import Task
+from agent_bench.graders.rubric_grader import RubricGrader
+from agent_bench.judges.cross_artifact import CrossArtifactConsistencyJudge
 from agent_bench.metrics.difficulty_analysis import compute_difficulty_degradation
 from agent_bench.metrics.discriminative import compute_discriminative_power
 from agent_bench.metrics.expanded import compute_bootstrap_ci, compute_stratified_bootstrap_ci
-from agent_bench.metrics.transfer_analysis import compute_transfer_gaps
 from agent_bench.metrics.scorecard import compute_balanced_profile
-from agent_bench.graders.rubric_grader import RubricGrader
-from agent_bench.judges.cross_artifact import CrossArtifactConsistencyJudge
-import asyncio
+from agent_bench.metrics.transfer_analysis import compute_transfer_gaps
 
 print("=" * 60)
 print("VALIDATION: All new modules from paper improvements")
@@ -58,7 +61,6 @@ print(f"  Pattern: {gaps['transfer_pattern']}")
 
 # M6: Bootstrap CI
 print("\n[M6] Bootstrap Confidence Intervals")
-import random
 random.seed(42)
 values = [random.random() for _ in range(30)]
 mean, lo, hi = compute_bootstrap_ci(values)
@@ -87,7 +89,7 @@ print(f"  Alerts: {dp['alerts']}")
 
 # M2: Cross-artifact consistency (async)
 print("\n[M2] Cross-Artifact Consistency")
-from agent_bench.core.scenarios import Task
+
 
 async def test_cross_artifact():
     judge = CrossArtifactConsistencyJudge()

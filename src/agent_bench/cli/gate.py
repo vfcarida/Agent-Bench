@@ -1,9 +1,7 @@
 """CI gate: exit with code based on scorecard thresholds."""
 
 import json
-import sys
 from pathlib import Path
-from typing import Any
 
 from rich.console import Console
 

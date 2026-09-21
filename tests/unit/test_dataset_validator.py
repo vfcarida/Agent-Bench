@@ -1,11 +1,11 @@
 """Unit tests for dataset validator."""
 
-import pytest
 from pathlib import Path
 
+import pytest
 import yaml
 
-from agent_bench.datasets.validator import validate_dataset, validate_all_datasets
+from agent_bench.datasets.validator import validate_all_datasets, validate_dataset
 
 
 @pytest.fixture

@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-bench"
-version = "0.2.0"
-description = "Multi-domain benchmark framework for evaluating LLM agents as complete systems"
+version = "1.0.0"
+description = "Enterprise Agent Evaluation Benchmark: Multi-Domain Reliability, Non-Compensable Safety Gating & Real Telemetry"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = []
-keywords = ["benchmark", "llm", "agents", "evaluation", "tool-use", "rag"]
+keywords = ["agent", "benchmark", "llm-evaluation", "safety-gate", "fintech", "pix", "reasoning-models", "tool-use", "rag"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -45,11 +45,13 @@ dev = [
 ]
 openai = ["openai>=1.6"]
 anthropic = ["anthropic>=0.18"]
-vllm = ["vllm>=0.4", "torch>=2.1"]
 huggingface = ["transformers>=4.38", "torch>=2.1", "accelerate>=0.27"]
 peft = ["peft>=0.9", "transformers>=4.38", "torch>=2.1"]
-athena = ["agent-bench[vllm,huggingface,peft]"]
-all = ["agent-bench[openai,anthropic,athena]"]
+vllm = ["vllm>=0.4", "torch>=2.1"]
+gpu = ["vllm>=0.4", "torch>=2.1"]
+athena = ["transformers>=4.38", "torch>=2.1", "peft>=0.9", "accelerate>=0.27"]
+all = ["agent-bench[openai,anthropic,huggingface,peft]"]
+all-gpu = ["agent-bench[all,vllm]"]
 
 [project.scripts]
 bench = "agent_bench.cli.main:cli"
@@ -66,6 +68,20 @@ asyncio_mode = "auto"
 target-version = "py312"
 line-length = 100
 
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+ignore = ["E501", "UP042"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = [
+    "pyarrow",
+    "pyarrow.*",
+    "vllm",
+    "vllm.*",
+]
+ignore_missing_imports = true

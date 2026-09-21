@@ -3,16 +3,9 @@
 import importlib
 import importlib.metadata
 from dataclasses import dataclass, field
-from typing import Any, Type
+from typing import Any
 
 import structlog
-
-from agent_bench.core.adapters import (
-    JudgeAdapter,
-    ModelAdapter,
-    RetrievalAdapter,
-    ToolAdapter,
-)
 
 logger = structlog.get_logger()
 
@@ -109,7 +102,7 @@ class PluginRegistry:
             for info in type_plugins.values()
         ]
 
-    def load_class(self, plugin_type: str, name: str) -> Type[Any] | None:
+    def load_class(self, plugin_type: str, name: str) -> type[Any] | None:
         """Load and return the actual class for a plugin."""
         info = self.get(plugin_type, name)
         if not info:

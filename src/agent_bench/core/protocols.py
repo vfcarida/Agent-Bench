@@ -7,7 +7,7 @@ evaluators.
 
 from typing import Any, Protocol, runtime_checkable
 
-from agent_bench.core.adapters import ToolCallResult, JudgeVerdict
+from agent_bench.core.adapters import JudgeVerdict, ToolCallResult
 from agent_bench.core.artifacts import TraceEvent
 from agent_bench.core.scenarios import Task
 

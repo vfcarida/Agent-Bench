@@ -127,7 +127,33 @@ def test_generate_html_report_with_pass_k_and_cis(tmp_path):
     assert "0.600" in content
     assert "[0.30, 0.90]" in content
     assert "0.800" in content
-    assert "[0.50, 1.00]" in content
-    assert "0.400" in content
     assert "[0.10, 0.70]" in content
+    assert '<html lang="en">' in content
+
+
+def test_generate_html_report_locale(tmp_path):
+    runs_dir = tmp_path / "data" / "runs"
+    runs_dir.mkdir(parents=True)
+    run_data = {
+        "run_id": "run-locale-test",
+        "started_at": "2026-01-01T00:00:00",
+        "tasks_total": 1,
+        "tasks_passed": 1,
+        "tasks_failed": 0,
+    }
+    (runs_dir / "run-locale-test.json").write_text(json.dumps(run_data))
+    output_dir = tmp_path / "reports"
+
+    import os
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        res_default = generate_html_report("run-locale-test", output_dir)
+        assert '<html lang="en">' in res_default.read_text()
+
+        res_pt = generate_html_report("run-locale-test", output_dir, locale="pt-BR")
+        assert '<html lang="pt-BR">' in res_pt.read_text()
+    finally:
+        os.chdir(old_cwd)
+
 

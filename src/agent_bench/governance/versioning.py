@@ -2,12 +2,10 @@
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
-import yaml
 
 
 @dataclass
@@ -45,7 +43,7 @@ class BenchmarkVersioning:
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         data = {
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
             "current_version": self.current_version,
             "versions": [self._entry_to_dict(e) for e in self._entries],
         }
@@ -66,7 +64,7 @@ class BenchmarkVersioning:
         """Record a new benchmark version."""
         entry = VersionEntry(
             version=version,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             config_hash=config_hash,
             changes=changes,
             author=author,

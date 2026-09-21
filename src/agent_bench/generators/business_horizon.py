@@ -1,10 +1,16 @@
 """Business long-horizon / SME advisor-like synthetic case generator."""
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import GenerationResult
-from .perturbations import add_ambiguity, add_urgency, apply_noise, inject_distraction, vary_formality
+from .perturbations import (
+    add_ambiguity,
+    add_urgency,
+    apply_noise,
+    inject_distraction,
+    vary_formality,
+)
 
 # Hardcoded data pools
 _COMPANY_TYPES = ["MEI", "ME", "EPP", "LTDA", "SA"]
@@ -407,7 +413,7 @@ class BusinessHorizonGenerator:
             "metadata": {
                 "created_by": "BusinessHorizonGenerator",
                 "generator_model": "deterministic_template",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             },
         }
 

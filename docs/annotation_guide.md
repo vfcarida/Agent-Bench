@@ -1,115 +1,143 @@
-# Guia de Anotação
+# Evaluation Case Annotation Guide
 
-## O Que Faz um Bom Caso de Eval
+This guide outlines standards and best practices for authoring, reviewing, and validating evaluation cases within `Agent-Bench`.
 
-Um caso de eval deve ser:
+---
 
-1. **Não-ambíguo** — apenas uma resposta correta possível (ou critérios claros para aceitar variações)
-2. **Atômico** — testa um comportamento específico, não múltiplos de uma vez
-3. **Realista** — representa algo que um usuário real faria
-4. **Verificável** — possível determinar pass/fail programaticamente
-5. **Independente** — não depende do resultado de outros casos
+## 1. Principles of a High-Quality Eval Case
 
-## Escrevendo expected_outcome
+Every evaluation case must satisfy five core criteria:
 
-O `expected_outcome` define o que o agente DEVE produzir. Formatos aceitos:
+1. **Unambiguous**: A clear, deterministic standard for success. Any valid alternate formulation must be explicitly accounted for in acceptance matchers.
+2. **Atomic**: Focuses on a single logical workflow or failure mode (e.g., balance validation, tool call sequencing, refusal of prompt injection).
+3. **Realistic**: Reflects realistic human user interactions, enterprise domain nuances, and plausible multi-turn requests.
+4. **Programmatically Verifiable**: Evaluation should rely on deterministic code-based graders (`ExactMatch`, `ToolMatch`, `StateCheck`) whenever possible.
+5. **Hermetic & Isolated**: Test cases must never rely on external network requests or side-effects from previous test cases.
 
-### Exact match (para respostas estruturadas)
+---
+
+## 2. Authoring `expected_tools`
+
+Define the tool actions required to fulfill the user's intent:
+
 ```yaml
-expected_outcome:
-  type: "exact"
-  value:
-    action: "transfer_pix"
-    status: "completed"
+expected_tools:
+  - name: "validate_recipient"
+    arguments:
+      key_type: "cpf"
+      key_value: "123.456.789-00"
+  - name: "execute_transfer"
+    arguments:
+      amount: 150.00
+      currency: "BRL"
 ```
 
-### Contains (para respostas textuais)
-```yaml
-expected_outcome:
-  type: "contains"
-  must_include: ["transferência realizada", "R$ 50,00"]
-  must_not_include: ["erro", "não foi possível"]
-```
+- **Order Sensitivity**: When sequencing matters, ensure tools are declared in exact execution order.
+- **Dynamic Matchers**: For fields with nondeterministic outputs (e.g., transaction IDs, timestamps), use wildcard matchers rather than hardcoded literals.
 
-### Semantic (quando variação textual é aceitável)
-```yaml
-expected_outcome:
-  type: "semantic"
-  reference: "A transferência PIX de R$ 50 foi realizada com sucesso para João."
-  min_similarity: 0.85
-```
+---
 
-## Escrevendo expected_state_changes
+## 3. Authoring `expected_state_mutations`
 
-Define mutações esperadas no estado do agente/sistema:
+Specify exact mutations that the agent's actions must cause in the task environment:
 
 ```yaml
-expected_state_changes:
-  - field: "session.balance"
+expected_state_mutations:
+  - path: "account.balance"
     operation: "decrease_by"
-    value: 50.00
-  - field: "session.last_transaction.type"
-    operation: "equals"
-    value: "pix_out"
-  - field: "session.pending_auth"
-    operation: "equals"
-    value: false
+    value: 150.00
+  - path: "account.transaction_history"
+    operation: "append"
+    value:
+      type: "pix_out"
+      amount: 150.00
 ```
 
-Operações suportadas: `equals`, `increase_by`, `decrease_by`, `contains`, `not_null`, `is_null`, `changed`.
+Supported state mutation operations:
+- `equals`: Strict value equality.
+- `increase_by` / `decrease_by`: Numeric deltas.
+- `append`: Element added to list.
+- `contains`: Key or substring presence.
+- `not_null` / `is_null`: Nullability assertion.
+- `changed`: Value mutated from initial state.
 
-## Escolhendo grading_strategy
+---
 
-| Estratégia | Quando usar |
-|------------|-------------|
-| `deterministic` | Output estruturado, resposta única correta. Preferido. |
-| `tool_match` | Foco em quais tools foram chamadas e com quais args. |
-| `state_check` | Foco no estado final, não na resposta textual. |
-| `rubric` | Avaliação multidimensional com rubric explícita. Mais caro. |
-| `composite` | Combinação de múltiplas estratégias com pesos. |
+## 4. Authoring `expected_final_response`
 
-**Regra geral**: se pode ser `deterministic`, use `deterministic`. Só escale para `rubric` quando necessário.
+Defines how the agent's textual communication is graded:
 
-## Escrevendo Rubrics
-
-Para `grading_strategy: rubric`, defina critérios explícitos:
-
+### Exact Match (Structured Outputs / Specific Codes)
 ```yaml
-rubric:
-  - dimension: "completude"
-    weight: 0.4
-    levels:
-      0: "Resposta não endereça a pergunta"
-      1: "Resposta parcial, falta informação chave"
-      2: "Resposta completa com toda informação necessária"
-  - dimension: "tom"
-    weight: 0.2
-    levels:
-      0: "Tom inadequado (rude, informal demais)"
-      1: "Tom neutro mas não ideal"
-      2: "Tom adequado ao contexto bancário"
+expected_final_response:
+  matcher: "exact"
+  expected: "TRANSFER_SUCCESSFUL:TX-9981"
 ```
 
-## Armadilhas Comuns
+### Substring Matchers (`contains_all` / `forbidden`)
+```yaml
+expected_final_response:
+  matcher: "contains"
+  contains_all:
+    - "transferência de R$ 150,00"
+    - "concluída com sucesso"
+  forbidden:
+    - "falha"
+    - "saldo insuficiente"
+```
 
-| Armadilha | Problema | Solução |
-|-----------|----------|---------|
-| Expected muito rígido | Falha por variação irrelevante (pontuação, espaço) | Use `contains` ou normalize antes de comparar |
-| Caso dependente de hora/data | Falha em horários diferentes | Mock de datetime no contexto |
-| Múltiplos caminhos corretos | Falso negativo | Liste alternativas ou use `semantic` |
-| Estado inicial implícito | Não reproduzível | Sempre declarar `initial_state` completo |
-| Tool args com valores dinâmicos | IDs mudam entre runs | Use matchers (`any_uuid`, `any_timestamp`) |
+### Semantic Matcher (Calibrated Embedding Similarity)
+```yaml
+expected_final_response:
+  matcher: "semantic"
+  reference: "The PIX transfer of R$ 150.00 to receiver João Silva was completed."
+  threshold: 0.85
+```
 
-## Checklist de Qualidade
+---
 
-Antes de submeter um caso, verifique:
+## 5. Grading Strategy Selection
 
-- [ ] `case_id` é UUID único
-- [ ] `input.user_message` é realista (linguagem natural, não robotizada)
-- [ ] `initial_state` está completo (nada implícito)
-- [ ] `expected_outcome` é verificável por código
-- [ ] `expected_state_changes` lista TODAS as mudanças esperadas
-- [ ] `grading_strategy` é a mais simples que funciona
-- [ ] Sem PII real (CPFs, contas, telefones)
-- [ ] Metadata preenchido (source_type, created_by, created_at)
-- [ ] Rodou o caso localmente e o grader retorna o score esperado
+| Grading Strategy | Primary Use Case | Grader Implementation |
+|------------------|------------------|-----------------------|
+| `deterministic` | Structured payloads, exact state changes, and verified tool calls. (Recommended) | `ExactMatchGrader`, `ToolMatchGrader`, `StateCheckGrader` |
+| `tool_match` | Trajectory verification focusing on correct tool routing and valid arguments. | `ToolMatchGrader` |
+| `state_check` | State mutation verification in interactive sandboxes. | `StateCheckGrader` |
+| `rubric` | Qualitative assessment with calibrated scoring criteria (e.g., clarity, domain tone). | `RubricGrader` |
+| `composite` | Multi-phase gating combining deterministic checks with qualitative rubrics. | `CompositeGrader` / `GatedEvaluator` |
+
+**Maintainer Rule**: Always prefer deterministic graders. Escalate to LLM rubrics only when assessing subjective conversational nuance.
+
+---
+
+## 6. Common Annotation Pitfalls
+
+| Pitfall | Operational Risk | Recommended Fix |
+|---------|------------------|-----------------|
+| **Brittle exact text match** | False failures due to punctuation, spacing, or greetings | Use `contains_all` or normalize strings before evaluation |
+| **Implicit environment state** | Non-reproducible test failures across different environments | Fully declare all fields in `initial_state` |
+| **Unanchored timestamps** | Tests pass today but fail next month | Provide mock reference clocks in test case context |
+| **Leaking Holdout Data** | Contamination of evaluation benchmarks | Enforce `split: dev` or `split: holdout` directory separation |
+| **Hardcoding Real PII** | Security and compliance breach | Use synthetic, checksum-valid test identifiers |
+
+---
+
+## 7. Pre-Submission Quality Checklist
+
+Before committing an evaluation case to `datasets/gold/`:
+
+- [ ] `id` is a unique, descriptive slug or UUID.
+- [ ] `split` is explicitly declared (`dev`, `holdout`, `calibration`, `regression`, `smoke`).
+- [ ] `initial_state` explicitly initializes all relevant environment keys.
+- [ ] `expected_tools` specifies exact argument schemas.
+- [ ] `expected_state_mutations` captures all side effects.
+- [ ] Zero real customer PII (no authentic CPFs, bank accounts, or real phone numbers).
+- [ ] Provenance metadata is fully populated (`created_by`, `review_status: approved`).
+- [ ] Case validated locally using CLI smoke test:
+  ```bash
+  bench run-case <task_id> --domain <domain> --system mock
+  ```
+- [ ] Offline contamination check passes:
+  ```bash
+  bench check-contamination
+  ```

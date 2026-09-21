@@ -1,9 +1,9 @@
 """Integration test: run investment_advisor suite end-to-end."""
 
-import pytest
-from pathlib import Path
 
-from agent_bench.core.config import BenchConfig, SuiteConfig, SystemConfig, ModelConfig
+import pytest
+
+from agent_bench.core.config import BenchConfig, ModelConfig, SuiteConfig, SystemConfig
 from agent_bench.runners.suite_runner import run_suite
 
 

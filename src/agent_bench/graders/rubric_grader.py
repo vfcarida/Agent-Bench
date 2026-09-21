@@ -7,7 +7,8 @@ Inspired by BankerToolBench (arXiv:2604.11304) "Gandalf the Grader":
 - Failure analysis breaks down by importance level
 """
 import re
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
 
 from agent_bench.core.schema_v2 import IMPORTANCE_WEIGHTS
 from agent_bench.graders.state_grader import GradeResult

@@ -13,7 +13,7 @@ import random
 import pytest
 
 from agent_bench.metrics.compute import compute_pass_hat_k, compute_pass_k, compute_task_metrics
-from agent_bench.metrics.expanded import compute_bootstrap_ci
+from agent_bench.metrics.expanded import compute_bootstrap_ci, compute_stratified_bootstrap_ci
 from agent_bench.metrics.scorecard import compute_scorecard
 
 
@@ -314,4 +314,58 @@ async def test_suite_runner_unpooled_pass_k_and_cis(tmp_path):
     assert "pass_hat_3" in sc
     assert "pass_at_3" in sc
     assert sc["sampling_denominator"] == "all_trials_including_failures_timeouts"
+
+
+class TestVectorizedBootstrap:
+    """Tests vectorized NumPy implementation and fallback parity for compute_bootstrap_ci."""
+
+    def test_bootstrap_edge_cases(self) -> None:
+        # Empty
+        assert compute_bootstrap_ci([]) == (0.0, 0.0, 0.0)
+        assert compute_stratified_bootstrap_ci({}) == (0.0, 0.0, 0.0)
+
+        # Single value
+        assert compute_bootstrap_ci([0.75]) == (0.75, 0.75, 0.75)
+
+        # Identical values
+        mean, low, high = compute_bootstrap_ci([1.0, 1.0, 1.0, 1.0], n_bootstrap=500)
+        assert mean == 1.0
+        assert low == 1.0
+        assert high == 1.0
+
+    def test_numpy_and_fallback_consistency(self) -> None:
+        data = [0.2, 0.4, 0.6, 0.8, 1.0]
+        # Normal (NumPy) execution
+        np_mean, np_low, np_high = compute_bootstrap_ci(data, n_bootstrap=2000, seed=123)
+        assert abs(np_mean - 0.6) < 1e-6
+        assert np_low < np_mean < np_high
+
+        # Simulated fallback without numpy
+        import builtins
+        from unittest.mock import patch
+        real_import = builtins.__import__
+
+        def fake_import(name: str, *args: object, **kwargs: object) -> object:
+            if name == "numpy":
+                raise ImportError("No module named 'numpy'")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=fake_import):
+            py_mean, py_low, py_high = compute_bootstrap_ci(data, n_bootstrap=2000, seed=123)
+            assert abs(py_mean - 0.6) < 1e-6
+            assert py_low < py_mean < py_high
+            # Both should yield very close confidence intervals
+            assert abs(np_low - py_low) < 0.1
+            assert abs(np_high - py_high) < 0.1
+
+    def test_stratified_bootstrap_groups(self) -> None:
+        groups = {
+            "g1": [0.8, 0.9, 1.0],
+            "g2": [0.4, 0.5, 0.6],
+        }
+        mean, low, high = compute_stratified_bootstrap_ci(groups, n_bootstrap=1000, seed=42)
+        expected_mean = (0.9 + 0.5) / 2.0
+        assert abs(mean - expected_mean) < 1e-6
+        assert low <= mean <= high
+
 

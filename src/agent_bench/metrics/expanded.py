@@ -1,7 +1,7 @@
 """Expanded metric computations for agent bench."""
 import math
-
 from typing import Any
+
 from agent_bench.graders.state_grader import GradeResult
 
 
@@ -44,33 +44,46 @@ def compute_bootstrap_ci(
     benchmark groups, stratified bootstrap with weights proportional
     to dataset size is used.
 
-    This is more accurate than normal approximation for:
-    - Small sample sizes
-    - Non-normal distributions
-    - Binary outcomes (pass/fail)
+    Vectorized using NumPy for high-throughput batch evaluation with
+    fallback to Python standard library when NumPy is unavailable.
     """
-    import random
-
     n = len(values)
     if n == 0:
         return (0.0, 0.0, 0.0)
     if n == 1:
         return (values[0], values[0], values[0])
 
-    rng = random.Random(seed)
-    mean = sum(values) / n
+    try:
+        import numpy as np
 
-    bootstrap_means: list[float] = []
-    for _ in range(n_bootstrap):
-        sample = rng.choices(values, k=n)
-        bootstrap_means.append(sum(sample) / n)
+        arr = np.asarray(values, dtype=np.float64)
+        mean_val = float(np.mean(arr))
+        rng = np.random.default_rng(seed)
+        indices = rng.integers(0, n, size=(n_bootstrap, n))
+        bootstrap_means = np.mean(arr[indices], axis=1)
+        alpha = 1.0 - confidence
+        lower_pct = (alpha / 2.0) * 100.0
+        upper_pct = (1.0 - alpha / 2.0) * 100.0
+        lower = float(np.percentile(bootstrap_means, lower_pct))
+        upper = float(np.percentile(bootstrap_means, upper_pct))
+        return (mean_val, lower, upper)
+    except ImportError:
+        import random
 
-    bootstrap_means.sort()
-    alpha = 1 - confidence
-    lower_idx = max(0, int(alpha / 2 * n_bootstrap))
-    upper_idx = min(n_bootstrap - 1, int((1 - alpha / 2) * n_bootstrap))
+        rng_py = random.Random(seed)
+        mean = sum(values) / n
 
-    return (mean, bootstrap_means[lower_idx], bootstrap_means[upper_idx])
+        bootstrap_means_list: list[float] = []
+        for _ in range(n_bootstrap):
+            sample = rng_py.choices(values, k=n)
+            bootstrap_means_list.append(sum(sample) / n)
+
+        bootstrap_means_list.sort()
+        alpha = 1 - confidence
+        lower_idx = max(0, int(alpha / 2 * n_bootstrap))
+        upper_idx = min(n_bootstrap - 1, int((1 - alpha / 2) * n_bootstrap))
+
+        return (mean, bootstrap_means_list[lower_idx], bootstrap_means_list[upper_idx])
 
 
 def compute_stratified_bootstrap_ci(
@@ -84,40 +97,66 @@ def compute_stratified_bootstrap_ci(
     FINESSE-Bench Section 5.4: for aggregated benchmark groups,
     use stratified bootstrap with weights proportional to dataset size.
 
+    Vectorized using NumPy for high-throughput batch evaluation with
+    fallback to Python standard library when NumPy is unavailable.
+
     Args:
         group_values: Mapping from group/dataset name to scores
     """
-    import random
-
-    all_values = []
-    group_weights: dict[str, float] = {}
+    all_values: list[float] = []
     total = sum(len(v) for v in group_values.values())
 
     if total == 0:
         return (0.0, 0.0, 0.0)
 
-    for group, vals in group_values.items():
+    for vals in group_values.values():
         all_values.extend(vals)
-        group_weights[group] = len(vals) / total
 
     mean = sum(all_values) / total
-    rng = random.Random(seed)
 
-    bootstrap_means: list[float] = []
-    for _ in range(n_bootstrap):
-        boot_mean = 0.0
-        for group, vals in group_values.items():
+    try:
+        import numpy as np
+
+        rng = np.random.default_rng(seed)
+        boot_means = np.zeros(n_bootstrap, dtype=np.float64)
+
+        for _group, vals in group_values.items():
             if vals:
-                sample = rng.choices(vals, k=len(vals))
-                boot_mean += (sum(sample) / len(sample)) * group_weights[group]
-        bootstrap_means.append(boot_mean)
+                arr = np.asarray(vals, dtype=np.float64)
+                weight = len(vals) / total
+                indices = rng.integers(0, len(vals), size=(n_bootstrap, len(vals)))
+                group_boot_means = np.mean(arr[indices], axis=1)
+                boot_means += group_boot_means * weight
 
-    bootstrap_means.sort()
-    alpha = 1 - confidence
-    lower_idx = max(0, int(alpha / 2 * n_bootstrap))
-    upper_idx = min(n_bootstrap - 1, int((1 - alpha / 2) * n_bootstrap))
+        alpha = 1.0 - confidence
+        lower_pct = (alpha / 2.0) * 100.0
+        upper_pct = (1.0 - alpha / 2.0) * 100.0
+        lower = float(np.percentile(boot_means, lower_pct))
+        upper = float(np.percentile(boot_means, upper_pct))
+        return (mean, lower, upper)
+    except ImportError:
+        import random
 
-    return (mean, bootstrap_means[lower_idx], bootstrap_means[upper_idx])
+        group_weights: dict[str, float] = {
+            group: len(vals) / total for group, vals in group_values.items()
+        }
+        rng_py = random.Random(seed)
+
+        bootstrap_means_list = []
+        for _ in range(n_bootstrap):
+            boot_mean = 0.0
+            for group, vals in group_values.items():
+                if vals:
+                    sample = rng_py.choices(vals, k=len(vals))
+                    boot_mean += (sum(sample) / len(sample)) * group_weights[group]
+            bootstrap_means_list.append(boot_mean)
+
+        bootstrap_means_list.sort()
+        alpha = 1 - confidence
+        lower_idx = max(0, int(alpha / 2 * n_bootstrap))
+        upper_idx = min(n_bootstrap - 1, int((1 - alpha / 2) * n_bootstrap))
+
+        return (mean, bootstrap_means_list[lower_idx], bootstrap_means_list[upper_idx])
 
 
 def compute_tool_call_precision(expected_calls: list[Any], actual_calls: list[Any]) -> float:

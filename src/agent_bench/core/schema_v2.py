@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # ---------- BTB-inspired: Rubric importance levels ----------
 # From BankerToolBench (arXiv:2604.11304): criteria are scored binary
 # with importance weights (1, 3, 5, 10). Critical criteria act as

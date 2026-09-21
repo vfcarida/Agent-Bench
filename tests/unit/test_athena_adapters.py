@@ -8,7 +8,6 @@ import pytest
 
 from agent_bench.core.adapters import ModelResponse
 
-
 # ──────────────────────────────────────────────────────────────────
 # vLLM Adapter Tests
 # ──────────────────────────────────────────────────────────────────
@@ -128,6 +127,7 @@ class TestDtypeResolution:
 
         if HF_AVAILABLE:
             import torch
+
             from agent_bench.models.huggingface_adapter import _resolve_torch_dtype
 
             assert _resolve_torch_dtype("float16") == torch.float16
@@ -167,7 +167,7 @@ class TestAdapterManagerLifecycle:
 
     def _make_manager(self):
         """Create a mocked AdapterManager."""
-        from agent_bench.models.adapter_manager import AdapterManager, PEFT_AVAILABLE
+        from agent_bench.models.adapter_manager import PEFT_AVAILABLE, AdapterManager
 
         if not PEFT_AVAILABLE:
             pytest.skip("PEFT not installed")

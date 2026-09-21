@@ -41,7 +41,7 @@ def validate_config(ctx: click.Context) -> None:
 
 
 @cli.command()
-@click.option("--fixtures-dir", default="data/fixtures", type=click.Path())
+@click.option("--fixtures-dir", "--data-dir", default="datasets/gold/dev", type=click.Path(), help="Directory containing dataset files")
 def validate_datasets(fixtures_dir: str) -> None:
     """Validate all dataset files for schema correctness."""
     from agent_bench.datasets.validator import validate_all_datasets
@@ -265,13 +265,14 @@ def export_dataset_template(domain: str, output: str | None) -> None:
 
 @cli.command()
 @click.argument("run_id")
-@click.option("--task", default=None, help="Filter by task ID")
+@click.option("--task-id", "--task", "task_id", default=None, help="Filter by task ID")
+@click.option("--step", default=None, type=int, help="Filter by step index")
 @click.option("--limit", default=50, type=int, help="Max events to show")
-def view_traces(run_id: str, task: str | None, limit: int) -> None:
+def view_traces(run_id: str, task_id: str | None, step: int | None, limit: int) -> None:
     """View execution traces for a run."""
     from agent_bench.cli.trace_viewer import view_traces as _view
 
-    _view(run_id, task_id=task, limit=limit)
+    _view(run_id, task_id=task_id, step=step, limit=limit)
 
 
 @cli.command()
@@ -327,7 +328,7 @@ def changelog(version_file: str, since: str | None) -> None:
 
 
 @cli.command()
-@click.option("--fixtures-dir", default="data/fixtures", type=click.Path())
+@click.option("--fixtures-dir", "--data-dir", default="datasets/gold/dev", type=click.Path(), help="Directory containing dataset files")
 @click.option("--registry-file", default="data/governance/provenance.json", type=click.Path())
 @click.option("--version", default="1.0.0", help="Version tag for registration")
 def register_datasets(fixtures_dir: str, registry_file: str, version: str) -> None:
@@ -411,5 +412,37 @@ def analytics(runs_dir: str, group_by: str, system: str | None, domain: str | No
         console.print(f"  {' | '.join(parts)}")
 
 
+@cli.command()
+@click.option(
+    "--annotations",
+    type=click.Path(exists=True),
+    default="datasets/gold/calibration/annotator_agreement.yaml",
+    help="Path to YAML/JSON multi-annotator ratings file",
+)
+def check_agreement(annotations: str) -> None:
+    """Calculate inter-annotator agreement (Cohen's Kappa & Krippendorff's Alpha)."""
+    from rich.table import Table
+
+    from agent_bench.metrics.inter_annotator import evaluate_annotation_dataset, interpret_agreement
+
+    report = evaluate_annotation_dataset(Path(annotations))
+
+    console.print(f"\n[bold]Inter-Annotator Agreement Report[/bold] ({report['total_items']} items, {len(report['raters'])} raters)")
+    console.print(f"  Raters: {', '.join(report['raters'])}")
+    console.print(f"  Krippendorff's Alpha: [bold green]{report['krippendorffs_alpha']:.4f}[/bold green] ([dim]{report['alpha_interpretation']}[/dim])")
+    console.print(f"  Mean Cohen's Kappa:   [bold green]{report['mean_cohens_kappa']:.4f}[/bold green] ([dim]{report['kappa_interpretation']}[/dim])\n")
+
+    table = Table(title="Pairwise Cohen's Kappa Matrix")
+    table.add_column("Rater Pair", style="cyan")
+    table.add_column("Kappa", style="green", justify="right")
+    table.add_column("Interpretation", style="yellow")
+
+    for pair, score in report["pairwise_cohens_kappa"].items():
+        table.add_row(pair, f"{score:.4f}", interpret_agreement(score))
+
+    console.print(table)
+
+
 if __name__ == "__main__":
     cli()
+

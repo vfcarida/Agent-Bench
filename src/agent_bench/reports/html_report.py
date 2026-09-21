@@ -6,7 +6,7 @@ from pathlib import Path
 from jinja2 import Template
 
 _HTML_TEMPLATE = """<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="{{ locale or 'en' }}">
 <head>
     <meta charset="UTF-8">
     <title>Benchmark Report - {{ run_id[:8] }}</title>
@@ -184,7 +184,7 @@ def score_class(value: float) -> str:
     return "score-low"
 
 
-def generate_html_report(run_id: str, output_dir: Path) -> Path:
+def generate_html_report(run_id: str, output_dir: Path, locale: str = "en") -> Path:
     """Generate a full HTML report with scorecards and visualizations."""
     runs_dir = Path("data/runs")
     artifact_path = runs_dir / f"{run_id}.json"
@@ -224,6 +224,7 @@ def generate_html_report(run_id: str, output_dir: Path) -> Path:
         "scorecards_sorted": scorecards_sorted,
         "pass_k_results": pass_k_results,
         "score_class": score_class,
+        "locale": locale,
     }
 
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -52,10 +52,10 @@ def find_duplicates(cases: list[dict[str, Any]], threshold: float = 0.85) -> lis
         for j in range(i + 1, len(tokenized)):
             id1, tokens1 = tokenized[i]
             id2, tokens2 = tokenized[j]
-            
+
             len1 = len(tokens1)
             len2 = len(tokens2)
-            
+
             # Handle edge cases with empty sets
             if len1 == 0 or len2 == 0:
                 if len1 == len2:  # both empty
@@ -65,7 +65,7 @@ def find_duplicates(cases: list[dict[str, Any]], threshold: float = 0.85) -> lis
                 if sim >= threshold:
                     duplicates.append((id1, id2, sim))
                 continue
-            
+
             # Prune mathematically impossible pairs:
             # Jaccard(A, B) = |A ∩ B| / |A ∪ B| <= min(|A|, |B|) / max(|A|, |B|)
             if min(len1, len2) / max(len1, len2) < threshold:

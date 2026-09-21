@@ -1,7 +1,7 @@
 """Online eval stub: ingest real traces from JSONL and evaluate offline."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -158,7 +158,7 @@ async def run_online_eval(
             "metric_value": final_verdict.score,
             "metric_category": "functional",
             "passed": final_verdict.passed,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         })
 
     # Finalize
@@ -172,7 +172,7 @@ async def run_online_eval(
     # Scorecards
     scorecards = []
     for sys_id, results in task_results.items():
-        domains_in = set(r["domain"] for r in results)
+        domains_in = {r["domain"] for r in results}
         for d in domains_in:
             d_results = [r for r in results if r["domain"] == d]
             sc = compute_scorecard(sys_id, d, d_results, weighting_profile)

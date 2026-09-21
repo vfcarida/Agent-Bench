@@ -1,129 +1,168 @@
-# Como Executar Avaliações
+# How to Run Evaluations
 
-## Execução Local
+This guide provides complete instructions for executing benchmark evaluations, running CI quality gates, and inspecting telemetry traces using the `bench` CLI.
 
-### Rodar uma suite completa
+---
 
-```bash
-bench run-suite --domain pix_whatsapp --split dev
-```
+## 1. Prerequisites & Environment Setup
 
-Opções úteis:
-- `--split dev|holdout|smoke|regression` — qual split usar
-- `--profile functional|safety|operational` — perfil de scoring
-- `--parallel 4` — execuções paralelas
-- `--report` — gera report HTML ao final
-- `--seed 42` — seed para reprodutibilidade em casos não-determinísticos
-
-### Rodar um caso específico
+Ensure your environment is configured with development dependencies:
 
 ```bash
-bench run-case --case-id "abc123-def456" --verbose
+# Install core package with development tools
+pip install -e ".[dev]"
+
+# (Optional) Copy and configure model provider API keys
+cp .env.example .env
+# Edit .env with OPENAI_API_KEY, ANTHROPIC_API_KEY if evaluating live models
 ```
 
-Útil para debugging. Com `--verbose`, mostra cada turn do agente, tools chamadas e scores parciais.
-
-### Rodar múltiplos domínios
+Validate your configuration manifests before running:
 
 ```bash
-bench run-suite --all-domains --split smoke
+bench --config-dir configs validate-config
 ```
 
-## Execução em CI
+---
 
-### PR Check (smoke suite)
+## 2. Local Suite Execution
 
-Roda automaticamente em cada PR. Configuração típica:
+### 2.1 Running a Benchmark Suite
 
-```yaml
-# No workflow de CI
-- name: Eval Smoke
-  run: bench run-suite --all-domains --split smoke --gate
-  timeout-minutes: 5
-```
-
-O flag `--gate` faz o comando retornar exit code 1 se algum threshold for violado.
-
-### Nightly Full Eval
-
-Roda toda noite sobre o split `dev` completo + `holdout`:
+To execute a complete benchmark suite, pass the positional `suite_id` (defined in `configs/suites/<suite_id>.yaml`):
 
 ```bash
-bench run-suite --all-domains --split dev --report --output reports/nightly/
-bench run-suite --all-domains --split holdout --report --output reports/holdout/
+# Run the PIX Basic suite using the scripted reference runner (offline)
+bench --config-dir configs run-suite pix_basic_v1 --runner scripted
+
+# Run with custom repetition count and random seed for Pass@k estimation
+bench --config-dir configs run-suite pix_basic_v1 --runner scripted --repeat 3 --seed 42
+
+# Run against a specific dataset split (dev, holdout, calibration, regression)
+bench --config-dir configs run-suite pix_basic_v1 --runner scripted --split dev
 ```
 
-## Gerando Reports
+#### Available `--runner` options:
+- `auto`: Dynamically resolves the runner and model adapter from `configs/systems/` (default).
+- `scripted`: Uses deterministic, offline scripted agent policies (`ScriptedAgentRunner`).
+- `stub`: Uses domain-agnostic smoke agent (`DefaultAgentRunner` with `StubModelAdapter`).
+
+### 2.2 Enabling the LLM-as-a-Judge (Phase 2)
+
+By default, qualitative evaluations run deterministic and rubric checks. To enable `SemanticJudge` in Phase 2:
 
 ```bash
-bench report --input results/latest/ --format html --output reports/
-bench report --input results/latest/ --format json  # Para consumo programático
+bench --config-dir configs run-suite pix_basic_v1 \
+  --runner scripted \
+  --enable-llm-judge \
+  --llm-judge-system prompt_only_gpt4
 ```
 
-O report inclui:
-- Scorecard por domínio
-- Failure taxonomy breakdown
-- Comparação com baseline (se disponível)
-- Intervalos de confiança
+> **Note**: `--enable-llm-judge` requires passing the calibration gate experiment first. See [`docs/llm_judge_calibration_report.md`](llm_judge_calibration_report.md).
 
-## Gate Command (CI Thresholds)
+---
+
+## 3. Running a Single Case
+
+For targeted debugging and development, execute a single task using its unique `task_id`:
 
 ```bash
-bench gate --results results/latest/ --config domains/pix_whatsapp/domain_config.yaml
+# Execute PIX_001 against tool_calling_reactive_gpt4 in domain pix_assist
+bench --config-dir configs run-case PIX_001 \
+  --system tool_calling_reactive_gpt4 \
+  --domain pix_assist
+
+# Execute a case from the holdout split
+bench --config-dir configs run-case PIX_HOLDOUT_001 \
+  --system tool_calling_reactive_gpt4 \
+  --domain pix_assist \
+  --split holdout
 ```
 
-Lê os thresholds do `domain_config.yaml` e compara com os resultados:
-- Exit 0: todos thresholds atendidos
-- Exit 1: algum threshold violado (detalhes no stderr)
+---
 
-Exemplo de output em falha:
-```
-GATE FAILED:
-  success_rate: 0.82 < 0.85 (threshold)
-  policy_compliance_rate: 0.93 < 0.95 (threshold)
-```
+## 4. Contamination & Data Leakage Gating
 
-## Artefatos de Output
+Before running benchmarks or training synthetic cases, check for data leakage between holdout sets and dev or synthetic candidate pools:
 
-Após execução, a pasta `results/` contém:
+```bash
+# Check dataset leakage using default 0.80 Jaccard threshold
+bench check-contamination
 
-```
-results/
-├── <run_id>/
-│   ├── summary.json          # Métricas agregadas
-│   ├── cases/                # Resultado individual por caso
-│   │   ├── <case_id>.json    # Input, output, scores, traces
-│   │   └── ...
-│   ├── failures/             # Apenas casos que falharam
-│   │   └── <case_id>.json
-│   ├── report.html           # Report visual (se --report)
-│   └── metadata.json         # Config usado, timestamps, versões
+# Check with custom similarity threshold and directories
+bench check-contamination \
+  --threshold 0.85 \
+  --holdout-dir datasets/gold/holdout \
+  --dev-dir datasets/gold/dev
 ```
 
-### Lendo um resultado individual
+---
 
-Cada `<case_id>.json` contém:
+## 5. Continuous Integration (CI) Quality Gates
 
-```json
-{
-  "case_id": "abc123",
-  "status": "pass|fail|error",
-  "scores": {
-    "success": 1.0,
-    "state_accuracy": 0.875,
-    "tool_precision": 1.0,
-    "tool_recall": 0.67
-  },
-  "failure_category": null,
-  "agent_trace": [...],
-  "latency_ms": 2340,
-  "tokens": {"in": 1200, "out": 450}
-}
+To evaluate whether a completed run satisfies deployment criteria:
+
+```bash
+# Check quality gate against minimum global, functional, and risk scores
+bench gate <run_id> --min-global 0.60 --min-functional 0.50 --min-risk 0.70
+
+# Check gate with a maximum allowed failure ceiling
+bench gate <run_id> --max-failures 5
 ```
 
-## Dicas
+Exit Codes:
+- `0`: All quality and safety thresholds satisfied.
+- `1`: One or more thresholds breached (logs details to console).
 
-- Use `--split smoke` durante desenvolvimento para feedback rápido
-- Rode `--split regression` antes de merge para garantir não-regressão
-- Nunca rode `--split holdout` localmente para "ver como está" — reservado para CI oficial
-- Use `--verbose` + `--case-id` para debugar falhas específicas
+---
+
+## 6. Telemetry Traces & Analytics
+
+### 6.1 Inspecting Execution Traces
+
+Inspect events, prompt messages, and tool calls emitted during execution:
+
+```bash
+# View all traces for a run
+bench view-traces <run_id>
+
+# Filter traces for a specific task
+bench view-traces <run_id> --task PIX_001 --limit 20
+```
+
+### 6.2 Running Columnar Analytics
+
+Query aggregated operational metrics across persisted Parquet runs:
+
+```bash
+# Aggregate metric results across domains
+bench analytics --by domain
+
+# Aggregate metric results across systems
+bench analytics --by system
+
+# Inspect historical score trends for a specific system
+bench analytics --system tool_calling_reactive_gpt4
+```
+
+---
+
+## 7. Generating Reports & Visualizations
+
+```bash
+# Generate Markdown summary report
+bench generate-report <run_id> --format markdown
+
+# Generate interactive HTML dashboard
+bench generate-report <run_id> --format html
+
+# Compare two evaluation runs side-by-side
+bench compare-runs <run_id_1> <run_id_2> --output data/reports/comparison.md
+```
+
+Generated reports include:
+- Pass@1, Pass@3, Pass@5 and Pass^k reliability scores.
+- Non-parametric 95% bootstrap confidence intervals.
+- Operational latency percentiles ($p_{50}, p_{90}, p_{99}$).
+- Financial cost per successful task (USD).
+- Hard safety gate violation audit.

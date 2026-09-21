@@ -19,7 +19,7 @@ logger = structlog.get_logger()
 
 try:
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     HF_AVAILABLE = True
 except ImportError:
@@ -160,11 +160,12 @@ class HuggingFacePipelineAdapter(ModelAdapter):
         # Try to use the tokenizer's built-in chat template
         if hasattr(self._tokenizer, "apply_chat_template"):
             try:
-                return self._tokenizer.apply_chat_template(
+                formatted = self._tokenizer.apply_chat_template(
                     messages,
                     tokenize=False,
                     add_generation_prompt=True,
                 )
+                return str(formatted)
             except Exception:
                 pass
 

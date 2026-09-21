@@ -1,7 +1,7 @@
 """Tool-call grader: verifies expected tool calls were made correctly."""
 import re
-
 from typing import Any
+
 from agent_bench.graders.state_grader import GradeResult
 
 

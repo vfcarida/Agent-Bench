@@ -1,55 +1,63 @@
-# Filosofia do Benchmark
+# Benchmark Philosophy
 
-## Benchmark de SISTEMA, não de modelo
+## SYSTEM Benchmark, Not Just a Model Benchmark
 
-Este benchmark avalia o **sistema agêntico completo**: orquestração, tool calling, gerenciamento de estado, políticas de negócio e recuperação de erros. O modelo LLM é apenas um componente. Um agente pode falhar com um modelo excelente se a orquestração for ruim — e vice-versa.
+`Agent-Bench` evaluates the **complete agentic system**: orchestration, tool calling, state transitions, business policy compliance, and failure recovery. The foundation language model is merely one component. An agent can easily fail with a state-of-the-art model if orchestration or tool definitions are fragile — and conversely, a well-engineered agent architecture can succeed even with smaller, cost-effective models.
 
-Implicação prática: os casos de teste exercitam fluxos end-to-end, não apenas geração de texto.
+Practical implication: test cases exercise full end-to-end execution trajectories, not just static text generation.
 
-## Separação Gold / Synthetic / Adversarial
+## Gold / Synthetic / Adversarial Stratification
 
-| Tipo | Propósito | Quem cria |
-|------|-----------|-----------|
-| **Gold** | Ground truth validada por humanos. Fonte de verdade para métricas oficiais. | Especialistas de domínio |
-| **Synthetic** | Volume para cobertura estatística. Gerado programaticamente ou via LLM, validado por amostragem. | Pipeline automatizado |
-| **Adversarial** | Testa robustez: edge cases, injeções, entradas malformadas. | Red team / fuzzing |
+| Dataset Family | Purpose | Generation & Validation |
+|----------------|---------|-------------------------|
+| **Gold** | Ground truth human-verified cases. Authoritative source for official leaderboards. | Domain specialists & technical reviewers |
+| **Synthetic** | High-volume operational coverage for statistical confidence. | Automated pipelines with statistical sampling and verification |
+| **Adversarial** | Robustness evaluation: edge cases, prompt injection, malformed inputs, policy bypasses. | Red-teaming & automated fuzzing |
 
-A separação impede contaminação: gold nunca é diluído por dados sintéticos de menor confiança.
+Strict dataset separation prevents leakage and contamination: gold evaluation sets are never diluted by unverified synthetic data.
 
-## Graders code-based > LLM-as-judge
+## Code-Based Graders > LLM-as-Judge
 
-Preferimos graders determinísticos (código) porque:
+We prioritize deterministic, code-based graders (`ExactMatchGrader`, `ToolMatchGrader`, `StateCheckGrader`, `StructuredOutputGrader`) over subjective LLM judges:
 
-1. **Reprodutibilidade** — mesmo input sempre gera mesmo score
-2. **Velocidade** — ordens de magnitude mais rápido que chamar LLM
-3. **Custo** — zero custo incremental por avaliação
-4. **Auditabilidade** — lógica explícita, sem prompt frágil
+1. **Reproducibility**: Identical execution trajectories and final states yield identical evaluation scores every time.
+2. **Speed**: Sub-millisecond execution times without network latency or external API calls.
+3. **Cost**: Zero incremental financial cost per evaluation run.
+4. **Auditability & Traceability**: Explicit Python grading logic without brittle prompt phrasing or non-deterministic judge drift.
 
-LLM-as-judge é aceito apenas para dimensões subjetivas (fluência, tom) com rubrics explícitas e calibração documentada.
+LLM judges are utilized strictly for subjective quality dimensions (e.g., natural fluency, explanatory tone, domain-specific guidance) with calibrated rubrics and prompt injection defenses.
 
-## Princípios de Reprodutibilidade
+## Two-Phase Evaluation & Non-Compensable Safety Gates
 
-- **Seeds fixos** em toda geração sintética (`seed` campo obrigatório no metadata)
-- **Versionamento semântico** dos datasets (v1.0.0, v1.1.0...)
-- **Hash SHA-256** de cada arquivo de dataset registrado no dataset card
-- **Pinagem de dependências** — versão exata do framework e providers no lockfile
-- **Timestamp ISO-8601** em todo artefato gerado
+To avoid the risk of high functional scores masking severe safety violations, `Agent-Bench` uses a **Phase-0 Hard Safety Gate**:
 
-## Princípio do Holdout
+1. **Phase 0 (Hard Safety & Policy Gate)**: Evaluates whether critical constraints (e.g., unauthenticated data disclosure, unauthorized financial transfers, prompt injection compliance) were violated. If a hard safety rule is breached, the test case fails outright (`passed = False`), capping the final score at zero.
+2. **Phase 1 (Functional & Quality Scoring)**: Calculates functional accuracy (tool calls, state mutations, output match), cost, and latency only if the safety gate passes.
 
-O split `holdout` é sagrado:
+Functional excellence cannot compensate for policy or safety breaches.
 
-- NUNCA usar para tuning, debugging ou desenvolvimento
-- Usado exclusivamente para reportar métricas oficiais
-- Acesso restrito (idealmente só CI gera reports sobre holdout)
-- Se contaminado, deve ser regenerado integralmente
+## Reproducibility Invariants
 
-## Design Provider-Agnostic
+- **Fixed Seeds**: Mandatory seed tracking across synthetic generators and randomized sampling.
+- **Semantic Dataset Versioning**: All datasets follow SemVer (`v1.0.0`, `v1.1.0`, etc.).
+- **SHA-256 Integrity Hashes**: Every authoritative dataset file records cryptographic hashes to detect accidental mutation.
+- **Dependency Pinning**: Framework and external dependencies are tightly managed via lockfiles and `pyproject.toml`.
+- **ISO-8601 Timestamps**: Every evaluation run trace records explicit, UTC-based ISO-8601 timestamps.
 
-O benchmark não assume nenhum provider LLM específico:
+## The Sacred Holdout Principle
 
-- Interface abstrata `LLMProvider` com método `complete(messages, **kwargs)`
-- Configuração de provider via variável de ambiente ou config YAML
-- Métricas de custo normalizadas (tokens in/out, não currency)
-- Nenhum prompt hardcoded com instruções provider-specific (ex: "You are ChatGPT")
-- Testes devem passar independente de OpenAI, Anthropic, Azure, Bedrock, etc.
+The `holdout` split is strictly protected:
+
+- **Never** use holdout cases for tuning prompts, agent architectures, or debugging.
+- Used exclusively for reporting official benchmark metrics and release evaluations.
+- CI includes automated contamination checks (`bench check-contamination` / `scripts/check_contamination.py`) to detect verbatim or paraphrased leakage from holdout into dev or synthetic datasets.
+- Any contamination requires immediate invalidation and rotation of the affected holdout split.
+
+## Provider-Agnostic Design
+
+`Agent-Bench` is completely agnostic to specific model providers or proprietary APIs:
+
+- Clean abstraction protocols: `ModelAdapter` / `AgentRunner` interfaces.
+- Normalized metric accounting: raw token counts (`tokens_in`, `tokens_out`), latency percentiles, and normalized per-case costs.
+- Free of proprietary prompt assumptions or provider-specific locks.
+- Full compatibility with offline mocks, local open-weight models (via Hugging Face or Ollama), and cloud providers (OpenAI, Anthropic, Gemini, AWS Bedrock).

@@ -9,7 +9,6 @@ from agent_bench.runners.prompt_formatter import (
     PromptFormatter,
 )
 
-
 # ──────────────────────────────────────────────────────────────────
 # Built-in Template Tests
 # ──────────────────────────────────────────────────────────────────
@@ -252,7 +251,6 @@ class TestTemplateAutoDetection:
 
     def test_detect_from_tokenizer_class_name(self):
         """Should infer template from tokenizer class name."""
-        from unittest.mock import MagicMock
 
         class LlamaTokenizer:
             pass

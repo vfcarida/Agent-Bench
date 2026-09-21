@@ -1,14 +1,11 @@
-import os
-import pytest
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
-from agent_bench.validators.schema_validator import validate_eval_case
-from agent_bench.validators.dedup_checker import find_duplicates
-from agent_bench.storage.jsonl import save_traces_jsonl, save_run_manifest, save_metrics_jsonl
-from agent_bench.storage.parquet import save_metrics_parquet, save_comparison_parquet
 from agent_bench.core.artifacts import RunArtifact, TraceEvent, TraceEventType
-
+from agent_bench.storage.jsonl import save_run_manifest, save_traces_jsonl
+from agent_bench.storage.parquet import save_comparison_parquet, save_metrics_parquet
+from agent_bench.validators.dedup_checker import find_duplicates
+from agent_bench.validators.schema_validator import validate_eval_case
 
 # =====================================================================
 # Strict Schema Validation Tests
@@ -194,16 +191,16 @@ def test_find_duplicates_optimizations():
 
 def test_jsonl_resilience_atomic_writes(tmp_path):
     output_path = tmp_path / "traces.jsonl"
-    
+
     traces = [
         TraceEvent(
             event_id="evt_1",
             event_type=TraceEventType.TOOL_CALL,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data={"input": "hello"},
         )
     ]
-    
+
     # Save standard traces
     save_traces_jsonl(traces, output_path)
     assert output_path.exists()
@@ -215,7 +212,7 @@ def test_jsonl_resilience_atomic_writes(tmp_path):
         suite_id="suite_abc",
         system_id="sys_x",
         model_id="model_y",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
         config_hash="abcde12345",
         benchmark_version="1.0.0",
         tasks_total=10,

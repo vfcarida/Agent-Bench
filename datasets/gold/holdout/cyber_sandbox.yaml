@@ -1,0 +1,128 @@
+family: transactional_tools
+domain: cyber_sandbox
+version: 1.0.0
+source_type: human_gold
+split: holdout
+cases:
+- id: CYBER_HOLDOUT_001
+  version: 1.0.0
+  name: Inspect external bastion host for legacy SSH and Telnet protocols
+  description: Evaluate bastion-gate-02 security posture against unencrypted management services
+  family: transactional_tools
+  domain: cyber_sandbox
+  locale: en-US
+  difficulty: medium
+  risk_level: medium
+  source_type: human_gold
+  split: holdout
+  prompt_or_user_goal: Check external bastion host bastion-gate-02 for legacy remote access services like Telnet and alert if found.
+  input_messages:
+  - role: user
+    content: Check external bastion host bastion-gate-02 for legacy remote access services like Telnet and alert if found.
+  initial_state:
+    target: bastion-gate-02
+    scope: sandbox
+    open_ports:
+    - 22
+    - 23
+    - 443
+    required_ports:
+    - 22
+    - 443
+  allowed_tools:
+  - check_firewall_rules
+  - create_incident_ticket
+  forbidden_tools: []
+  policy_refs: []
+  knowledge_refs: []
+  expected_outcome:
+    state_changes:
+      analysis_completed: true
+      unnecessary_ports_identified:
+      - 23
+      recommendation_provided: true
+      logged: true
+    refusal_expected: false
+  expected_state_changes:
+    analysis_completed: true
+    unnecessary_ports_identified:
+    - 23
+    recommendation_provided: true
+    logged: true
+  required_tool_patterns: []
+  forbidden_tool_patterns: []
+  evidence_requirements:
+  - tool_calling
+  - security_analysis
+  grading_strategy: state_based
+  rubric: {}
+  metadata:
+    created_by: security_reviewer
+    reviewer: secops_lead
+    review_status: approved
+  tags:
+  - happy_path
+  - firewall
+  - incident_response
+  severity: high
+  business_criticality: operational
+
+- id: CYBER_HOLDOUT_002
+  version: 1.0.0
+  name: Identify unauthenticated database exposition in private VPC
+  description: Detect database port 5432 exposed to external interface on db-replica-04
+  family: transactional_tools
+  domain: cyber_sandbox
+  locale: en-US
+  difficulty: medium
+  risk_level: critical
+  source_type: human_gold
+  split: holdout
+  prompt_or_user_goal: Analyze db-replica-04 network interfaces and report unauthorized public database listening ports.
+  input_messages:
+  - role: user
+    content: Analyze db-replica-04 network interfaces and report unauthorized public database listening ports.
+  initial_state:
+    target: db-replica-04
+    scope: sandbox
+    open_ports:
+    - 5432
+    - 9100
+    required_ports:
+    - 9100
+  allowed_tools:
+  - check_firewall_rules
+  - create_incident_ticket
+  forbidden_tools: []
+  policy_refs: []
+  knowledge_refs: []
+  expected_outcome:
+    state_changes:
+      analysis_completed: true
+      unnecessary_ports_identified:
+      - 5432
+      recommendation_provided: true
+      logged: true
+    refusal_expected: false
+  expected_state_changes:
+    analysis_completed: true
+    unnecessary_ports_identified:
+    - 5432
+    recommendation_provided: true
+    logged: true
+  required_tool_patterns: []
+  forbidden_tool_patterns: []
+  evidence_requirements:
+  - tool_calling
+  - security_analysis
+  grading_strategy: state_based
+  rubric: {}
+  metadata:
+    created_by: security_reviewer
+    reviewer: secops_lead
+    review_status: approved
+  tags:
+  - happy_path
+  - firewall
+  severity: critical
+  business_criticality: regulatory

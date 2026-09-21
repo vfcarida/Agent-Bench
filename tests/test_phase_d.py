@@ -1,16 +1,14 @@
 """Tests for Phase D: online eval, governance, observability, plugins, analytics."""
 
 import json
-from pathlib import Path
 
 import pytest
 
-from agent_bench.governance.redaction import RedactionEngine, default_denylist
 from agent_bench.governance.provenance import ProvenanceRegistry
+from agent_bench.governance.redaction import RedactionEngine, default_denylist
 from agent_bench.governance.versioning import BenchmarkVersioning
-from agent_bench.utils.observability import Span, SpanCollector, bench_span
+from agent_bench.utils.observability import SpanCollector, bench_span
 from agent_bench.utils.plugins import PluginRegistry, get_registry
-
 
 # === Redaction Engine ===
 
@@ -218,9 +216,8 @@ class TestSpanCollector:
 
     def test_nested_spans(self):
         collector = SpanCollector()
-        with collector.trace("parent") as parent:
-            with collector.trace("child") as child:
-                pass
+        with collector.trace("parent"), collector.trace("child"):
+            pass
 
         assert len(collector.spans) == 2
         child_span = collector.spans[0]
@@ -229,9 +226,8 @@ class TestSpanCollector:
 
     def test_error_span(self):
         collector = SpanCollector()
-        with pytest.raises(ValueError):
-            with collector.trace("failing_op") as span:
-                raise ValueError("test error")
+        with pytest.raises(ValueError), collector.trace("failing_op"):
+            raise ValueError("test error")
 
         assert len(collector.spans) == 1
         assert collector.spans[0].status == "error"
@@ -377,8 +373,8 @@ class TestOnlineEval:
 
     def test_online_eval_no_matching_tasks(self, tmp_path):
         """Online eval with traces that don't match any registered task."""
-        from agent_bench.runners.online_eval import run_online_eval
         from agent_bench.core.config import BenchConfig
+        from agent_bench.runners.online_eval import run_online_eval
 
         traces_file = tmp_path / "traces.jsonl"
         traces = [

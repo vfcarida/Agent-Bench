@@ -1,104 +1,106 @@
-# Guia de Adjudicação
+# Adjudication and Disagreement Resolution Guide
 
-## Quando Adjudicar
+This guide establishes the formal adjudication protocol for resolving ambiguities, conflicting annotations, and edge-case interpretations in `Agent-Bench`.
 
-A adjudicação é necessária quando:
+---
 
-- 2 anotadores discordam sobre o `expected_outcome` de um caso
-- Discordância sobre se um comportamento do agente é "correto" ou "aceitável"
-- Ambiguidade na política de negócio aplicável
-- Novo edge case não coberto pelas diretrizes existentes
+## 1. When Adjudication is Required
 
-## Critérios de Decisão
+Formal adjudication must be triggered when:
 
-### 1. Consultar a fonte de verdade
+1. Two domain annotators disagree on `expected_tools`, `expected_state_mutations`, or `expected_final_response`.
+2. Disagreement arises over whether an agent trajectory is "correct" or "defensible".
+3. An enterprise policy rule in `policies.yaml` is ambiguous or subject to competing interpretations.
+4. An unprecedented edge case is discovered during evaluation failure audits.
 
-Ordem de precedência:
-1. Documentação oficial do produto (regras de negócio)
-2. Políticas definidas em `policies.yaml` do domínio
-3. Comportamento atual em produção (se consistente)
-4. Consenso do squad responsável
+---
 
-### 2. Princípio da menor surpresa
+## 2. Decision Principles & Hierarchy
 
-Se ambas interpretações são defensáveis, escolha a que o **usuário final** esperaria. O agente deve ser previsível.
+When adjudicating conflicting interpretations, follow this strict priority order:
 
-### 3. Princípio da segurança
+### I. Authoritative Ground Truth
+1. Official business domain policies (e.g., Central Bank regulatory requirements, banking product rules).
+2. Domain policy rules defined in `configs/domains/<domain>.yaml` or domain policy sets.
+3. Current verified production behavior.
+4. Technical consensus of the domain engineering team.
 
-Em caso de dúvida entre uma resposta mais permissiva e uma mais conservadora, preferir a conservadora — especialmente em:
-- Transações financeiras
-- Dados sensíveis
-- Ações irreversíveis
+### II. Principle of Least Surprise
+If multiple paths are defensible, select the trajectory that an informed human end-user would reasonably anticipate. Autonomous agent interactions must be predictable and intuitive.
 
-### 4. Teste do determinismo
+### III. Principle of Conservative Safety
+When choosing between a permissive vs. conservative outcome, always favor the conservative posture:
+- Financial transactions (require strict verification and balance validation before execution).
+- Access to sensitive user data or credentials.
+- Irreversible state changes (account closures, deletions).
 
-Prefira a interpretação que permite avaliação determinística. Se uma opção requer LLM-as-judge e outra permite grader code-based, preferir a segunda.
+### IV. Deterministic Eval Prioritization
+Prefer expected outcomes that can be validated deterministically by code over those requiring fuzzy LLM-as-judge heuristics.
 
-## Como Documentar a Decisão
+---
 
-Cada adjudicação deve ser registrada no caso:
+## 3. Documenting Adjudications
+
+Every resolved disagreement must be recorded directly in the evaluation case or adjudication registry:
 
 ```yaml
 adjudication:
-  date: "2026-05-15"
-  adjudicator: "nome.sobrenome"
+  date: "2026-09-20"
+  adjudicator: "maintainer@agent-bench.org"
   original_disagreement:
-    annotator_a: "Transfer deve falhar por saldo insuficiente"
-    annotator_b: "Transfer deve pedir confirmação antes de falhar"
-  decision: "Transfer deve falhar com mensagem de saldo insuficiente"
+    annotator_a: "Transfer must fail immediately due to insufficient balance."
+    annotator_b: "Transfer should ask the user for confirmation before failing."
+  decision: "Transfer must fail immediately with an insufficient balance error."
   rationale: |
-    Regra PIX-003 no policies.yaml define que validação de saldo
-    ocorre antes de qualquer confirmação. Sem saldo, não há o que confirmar.
-  reference: "policies.yaml#PIX-003"
-  precedent: true  # Serve como referência para casos futuros similares
+    Domain rule PIX-003 requires balance verification prior to transaction
+    confirmation prompts. Prompting for confirmation on an unexecutable transfer
+    degrades user experience and introduces race conditions.
+  policy_reference: "configs/domains/pix_assist.yaml#PIX-003"
+  precedent: true
 ```
 
-## Registro de Precedentes
+---
 
-Decisões marcadas como `precedent: true` devem ser adicionadas ao arquivo:
+## 4. Precedent Registry
 
-```
-domains/<dominio>/precedents.yaml
-```
-
-Formato:
+Decisions flagged with `precedent: true` must be recorded in the domain precedent index (`configs/domains/<domain>/precedents.yaml`):
 
 ```yaml
 - id: "PREC-001"
-  domain: "pix_whatsapp"
-  summary: "Validação de saldo ocorre antes de confirmação do usuário"
-  date: "2026-05-15"
-  case_ids: ["abc123"]
-  rationale: "Regra PIX-003 no policies.yaml"
+  domain: "pix_assist"
+  summary: "Balance validation strictly precedes transaction confirmation"
+  date: "2026-09-20"
+  related_case_ids: ["pix-012", "pix-045"]
+  rationale: "Rule PIX-003 in configs/domains/pix_assist.yaml"
 ```
 
-Anotadores devem consultar precedentes ANTES de escalar para adjudicação.
+Annotators and benchmark maintainers must consult the precedent index before opening new adjudication tickets.
 
-## Processo de Escalação
+---
+
+## 5. Escalation Workflow
 
 ```
-1. Anotadores discordam
+1. Annotation Disagreement Identified
    ↓
-2. Consultam precedents.yaml — resolve?
-   → Sim: aplicar precedente, documentar
-   → Não: continuar
+2. Consult Precedent Registry — Precedent exists?
+   → YES: Apply precedent and document case ID.
+   → NO: Proceed to peer review.
    ↓
-3. Discutem entre si (max 10 min) — resolve?
-   → Sim: documentar decisão
-   → Não: continuar
+3. Peer Sync (Timebox: 10 minutes) — Consensus reached?
+   → YES: Document agreed resolution.
+   → NO: Escalate to Domain Adjudicator.
    ↓
-4. Escalar para adjudicador (tech lead do domínio)
+4. Domain Adjudicator Review (SLA: 48 hours)
    ↓
-5. Adjudicador decide em até 48h
-   ↓
-6. Decisão documentada + registrada como precedente se aplicável
+5. Decision Finalized + Precedent Logged
 ```
 
-## Métricas de Adjudicação
+---
 
-Monitorar mensalmente:
-- Taxa de adjudicação (% de casos que precisaram) — target: < 10%
-- Tempo médio de resolução — target: < 48h
-- Categorias mais frequentes de discordância (indica gaps nas guidelines)
+## 6. Adjudication Metrics & Quality Health
 
-Se taxa > 15%, revisar o annotation guide e adicionar exemplos para os casos mais comuns.
+Track these indicators monthly:
+- **Adjudication Rate**: Percentage of cases requiring adjudication (Target: $< 10\%$).
+- **Resolution Latency**: Average time to decision (Target: $< 48$ hours).
+- **Recurrent Root Causes**: Frequent disputes in a specific domain signal ambiguous guidelines, requiring clarification in `docs/annotation_guide.md`.

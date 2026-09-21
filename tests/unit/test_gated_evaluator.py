@@ -1,7 +1,8 @@
 """Unit tests for GatedEvaluator logic."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from agent_bench.core.adapters import JudgeVerdict
 from agent_bench.core.scenarios import Task

@@ -6,7 +6,6 @@ Note: vLLM only supports Linux with CUDA GPUs.
 
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import Any
 
@@ -154,7 +153,7 @@ class VLLMModelAdapter(ModelAdapter):
         # Extract token counts from the final output
         tokens_in = 0
         tokens_out = 0
-        if request_output and request_output.outputs:  # noqa: F821 — defined in loop
+        if request_output and request_output.outputs:
             output = request_output.outputs[0]
             tokens_out = len(output.token_ids) if hasattr(output, "token_ids") else len(full_output) // 4
         if request_output and hasattr(request_output, "prompt_token_ids"):

@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import structlog
-
-from jinja2 import BaseLoader, Environment, TemplateNotFound
+from jinja2 import BaseLoader, Environment
 
 logger = structlog.get_logger()
 
@@ -211,7 +210,7 @@ class PromptFormatter:
         return rendered
 
     @classmethod
-    def from_tokenizer(cls, tokenizer: Any) -> "PromptFormatter":
+    def from_tokenizer(cls, tokenizer: Any) -> PromptFormatter:
         """Auto-detect template from a HuggingFace tokenizer.
 
         Many fine-tuned models store their chat template in the

@@ -3,9 +3,9 @@
 from pathlib import Path
 from typing import Any
 
-import pyarrow.parquet as pq
-import pyarrow.compute as pc
 import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
 
 def load_run_metrics(run_dir: Path) -> pa.Table | None:

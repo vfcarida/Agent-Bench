@@ -1,8 +1,10 @@
 """Composite grader: selects and combines graders based on strategy."""
+from collections.abc import Callable
+from typing import Any
+
+from agent_bench.graders.rubric_grader import RubricGrader
 from agent_bench.graders.state_grader import GradeResult, StateGrader
 from agent_bench.graders.tool_call_grader import ToolCallGrader
-from agent_bench.graders.rubric_grader import RubricGrader
-from typing import Any, Callable
 
 
 class CompositeGrader:
