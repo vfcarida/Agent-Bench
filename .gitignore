@@ -13,3 +13,5 @@ data/reports/
 data/governance/
 .venv/
 venv/
+site/
+.deepeval/

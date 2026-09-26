@@ -21,6 +21,8 @@ The `bench` CLI provides commands for running benchmark suites, debugging execut
 | [`list-models`](#11-bench-list-models) | List configured model endpoints |
 | [`list-systems`](#12-bench-list-systems) | List configured agent systems |
 | [`list-plugins`](#13-bench-list-plugins) | List registered domain, tool, and model plugins |
+| [`export-inspect`](#14-bench-export-inspect) | Export datasets to Inspect AI dataset format |
+| [`export-inspect-log`](#15-bench-export-inspect-log) | Export run traces to Inspect AI EvalLog format |
 
 ---
 
@@ -176,3 +178,71 @@ bench check-agreement [OPTIONS]
 
 ### Options
 - `--annotations PATH`: Path to multi-annotator YAML/JSON ratings file.
+
+---
+
+## 10. `bench list-suites`
+
+Lists all benchmark suites configured in `configs/suites/`.
+
+```bash
+bench list-suites [OPTIONS]
+```
+
+---
+
+## 11. `bench list-models`
+
+Lists all configured LLM and local model endpoints in `configs/models/`.
+
+```bash
+bench list-models [OPTIONS]
+```
+
+---
+
+## 12. `bench list-systems`
+
+Lists all configured agent systems in `configs/systems/`.
+
+```bash
+bench list-systems [OPTIONS]
+```
+
+---
+
+## 13. `bench list-plugins`
+
+Lists all registered domain tools, mutators, and model adapters discovered in the runtime environment.
+
+```bash
+bench list-plugins [OPTIONS]
+```
+
+---
+
+## 14. `bench export-inspect`
+
+Exports Agent-Bench datasets into standard UK/US AI Safety Institute **Inspect AI** dataset format (`inspect_evals`).
+
+```bash
+bench export-inspect [OPTIONS]
+```
+
+### Options
+- `--domain TEXT`: Evaluation domain to export (`pix_assist`, `investment_advisor`, `sme_business_advisor`, `cyber_sandbox`).
+- `--split [dev|holdout]`: Dataset split to export *(Default: `dev`)*.
+- `--output PATH`: Target output JSON/JSONL file path.
+
+---
+
+## 15. `bench export-inspect-log`
+
+Converts completed Agent-Bench run traces into Inspect AI `EvalLog` compatible format.
+
+```bash
+bench export-inspect-log <run_id> [OPTIONS]
+```
+
+### Options
+- `--output PATH`: Target output path for Inspect eval log JSON.
