@@ -17,22 +17,27 @@ class RedactionRule:
 
 
 def default_denylist() -> list[RedactionRule]:
-    """Default patterns for Brazilian banking PII."""
+    """Default patterns for Brazilian banking PII and international enterprise credentials."""
     return [
         RedactionRule(
-            name="cpf",
-            pattern=r'\d{3}\.?\d{3}\.?\d{3}-?\d{2}',
-            replacement="[CPF_REDACTED]",
+            name="api_key",
+            pattern=r'\b(sk-proj-|sk-ant-|sk-|pk-|key-)[a-zA-Z0-9_-]{20,}\b',
+            replacement="[API_KEY_REDACTED]",
         ),
         RedactionRule(
-            name="cnpj",
-            pattern=r'\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}',
-            replacement="[CNPJ_REDACTED]",
+            name="github_pat",
+            pattern=r'\bgh[pousr]_[A-Za-z0-9_]{36,255}\b',
+            replacement="[GITHUB_PAT_REDACTED]",
         ),
         RedactionRule(
-            name="card_number",
-            pattern=r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b',
-            replacement="[CARD_REDACTED]",
+            name="aws_key",
+            pattern=r'\bAKIA[0-9A-Z]{16}\b',
+            replacement="[AWS_KEY_REDACTED]",
+        ),
+        RedactionRule(
+            name="iban",
+            pattern=r'\b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}\b',
+            replacement="[IBAN_REDACTED]",
         ),
         RedactionRule(
             name="email",
@@ -40,19 +45,34 @@ def default_denylist() -> list[RedactionRule]:
             replacement="[EMAIL_REDACTED]",
         ),
         RedactionRule(
+            name="card_number",
+            pattern=r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b',
+            replacement="[CARD_REDACTED]",
+        ),
+        RedactionRule(
+            name="ssn_us",
+            pattern=r'\b\d{3}-\d{2}-\d{4}\b',
+            replacement="[SSN_REDACTED]",
+        ),
+        RedactionRule(
+            name="cnpj",
+            pattern=r'\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b',
+            replacement="[CNPJ_REDACTED]",
+        ),
+        RedactionRule(
+            name="cpf",
+            pattern=r'\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b',
+            replacement="[CPF_REDACTED]",
+        ),
+        RedactionRule(
             name="phone_br",
-            pattern=r'\(?\d{2}\)?\s?\d{4,5}-?\d{4}',
+            pattern=r'(?<!\w)\(?\d{2}\)?\s?\d{4,5}-?\d{4}\b',
             replacement="[PHONE_REDACTED]",
         ),
         RedactionRule(
             name="account_number",
             pattern=r'\b\d{4,6}-[\dXx]\b',
             replacement="[ACCOUNT_REDACTED]",
-        ),
-        RedactionRule(
-            name="api_key",
-            pattern=r'(sk-|pk-|key-)[a-zA-Z0-9]{20,}',
-            replacement="[API_KEY_REDACTED]",
         ),
     ]
 
@@ -76,6 +96,10 @@ class RedactionEngine:
         for rule in self._rules:
             result = rule.compiled.sub(rule.replacement, result)
         return result
+
+    def redact_data(self, data: Any, *, depth: int = 10) -> Any:
+        """Recursively redact strings across arbitrary dicts, lists, or primitives."""
+        return self._redact_value(data, depth)
 
     def redact_dict(self, data: dict[str, Any], *, depth: int = 10) -> dict[str, Any]:
         """Recursively redact all string values in a dict."""

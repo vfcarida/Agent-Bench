@@ -1,5 +1,6 @@
 """Expanded metric computations for agent bench."""
 import math
+from enum import Enum
 from typing import Any
 
 from agent_bench.graders.state_grader import GradeResult
@@ -227,3 +228,101 @@ def compute_groundedness(results: list[dict[str, Any]]) -> float:
     if total_claims == 0:
         return 1.0
     return supported_claims / total_claims
+
+
+class SPRTDecision(str, Enum):
+    """Decisions for Wald's Sequential Probability Ratio Test (SPRT)."""
+
+    ACCEPT_H1 = "accept_h1"
+    REJECT_H1 = "reject_h1"
+    CONTINUE = "continue"
+
+
+def compute_wilson_score_interval(
+    successes: int,
+    total: int,
+    confidence: float = 0.95,
+) -> tuple[float, float, float]:
+    """Compute asymmetric Wilson score confidence interval for binomial success rates.
+
+    Particularly suited for small sample sizes and boundary pass rates (0% or 100%)
+    where normal approximations fail or produce out-of-bounds estimates.
+
+    Args:
+        successes: Number of successful trials (c).
+        total: Total number of trials (n).
+        confidence: Confidence level in (0, 1), default 0.95.
+
+    Returns:
+        tuple[float, float, float]: (p_hat, lower_bound, upper_bound) bounded strictly within [0.0, 1.0].
+    """
+    if total <= 0:
+        return (0.0, 0.0, 0.0)
+
+    successes = max(0, min(successes, total))
+    p = successes / total
+
+    z_map = {0.90: 1.64485, 0.95: 1.95996, 0.98: 2.32635, 0.99: 2.57583}
+    z = z_map.get(confidence, 1.95996)
+
+    z2 = z * z
+    n = float(total)
+
+    denominator = 1.0 + z2 / n
+    center = (p + z2 / (2.0 * n)) / denominator
+    margin = (z / denominator) * math.sqrt((p * (1.0 - p) / n) + (z2 / (4.0 * n * n)))
+
+    lower = max(0.0, center - margin)
+    upper = min(1.0, center + margin)
+
+    return (round(p, 4), round(lower, 4), round(upper, 4))
+
+
+def evaluate_wald_sprt(
+    successes: int,
+    trials: int,
+    p0: float = 0.50,
+    p1: float = 0.80,
+    alpha: float = 0.05,
+    beta: float = 0.10,
+) -> tuple[SPRTDecision, float]:
+    """Evaluate Wald's Sequential Probability Ratio Test (SPRT) on Bernoulli trial sequence.
+
+    Tests H0: p <= p0 against H1: p >= p1 with bounded Type I (alpha) and Type II (beta) errors.
+    Enables early stopping in benchmark suites when agent capability is statistically conclusive.
+
+    Args:
+        successes: Number of observed successes.
+        trials: Total number of observed trials.
+        p0: Baseline/null hypothesis pass rate (0 < p0 < p1 < 1).
+        p1: Target/alternative hypothesis pass rate.
+        alpha: Maximum allowable Type I error rate (false positive).
+        beta: Maximum allowable Type II error rate (false negative).
+
+    Returns:
+        tuple[SPRTDecision, float]: (decision, log_likelihood_ratio)
+    """
+    if not (0.0 < p0 < p1 < 1.0):
+        raise ValueError(f"Invalid hypothesis boundaries: must satisfy 0 < p0 < p1 < 1 (got p0={p0}, p1={p1})")
+    if not (0.0 < alpha < 0.5 and 0.0 < beta < 0.5):
+        raise ValueError(f"Error bounds alpha and beta must be in (0, 0.5) (got alpha={alpha}, beta={beta})")
+
+    if trials <= 0:
+        return (SPRTDecision.CONTINUE, 0.0)
+
+    c = successes
+    n = trials
+
+    # Log likelihood ratio (LLR)
+    llr = c * math.log(p1 / p0) + (n - c) * math.log((1.0 - p1) / (1.0 - p0))
+
+    # Wald decision boundaries
+    upper_bound_a = math.log((1.0 - beta) / alpha)
+    lower_bound_b = math.log(beta / (1.0 - alpha))
+
+    if llr >= upper_bound_a:
+        return (SPRTDecision.ACCEPT_H1, round(llr, 4))
+    elif llr <= lower_bound_b:
+        return (SPRTDecision.REJECT_H1, round(llr, 4))
+    else:
+        return (SPRTDecision.CONTINUE, round(llr, 4))

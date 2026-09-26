@@ -82,3 +82,31 @@ $$\text{Cost}_{\text{task}} = \left(\frac{\text{tokens}_{\text{in}}}{1,000} \tim
 We also report **Cost-per-Successful-Task**:
 
 $$\text{Cost}_{\text{success}} = \frac{\sum \text{Cost}}{\max(1, \text{Passed Tasks})}$$
+
+---
+
+## 5. Wilson Score Confidence Intervals for Small Samples
+
+When evaluating tasks with small sample sizes ($N \le 30$) or near boundary success rates ($c=0$ or $c=N$), traditional normal approximation intervals degenerate or predict out-of-bounds bounds.
+
+Agent-Bench computes the **asymmetric Wilson score interval**:
+
+$$\tilde{p} = \frac{c + \frac{z^2}{2}}{n + z^2} \pm \frac{z}{n + z^2} \sqrt{\frac{c(n-c)}{n} + \frac{z^2}{4}}$$
+
+Guarantees:
+- Strictly bounded in $[0.0, 1.0]$.
+- Non-zero upper bound even when zero successes are observed in $N$ trials.
+- Implemented in `agent_bench.metrics.expanded.compute_wilson_score_interval`.
+
+---
+
+## 6. Wald's Sequential Probability Ratio Test (SPRT)
+
+To minimize evaluation token consumption during development cycles without sacrificing statistical power, Agent-Bench provides **Wald's SPRT** (`evaluate_wald_sprt`):
+
+$$\text{LLR} = c \ln\left(\frac{p_1}{p_0}\right) + (n - c) \ln\left(\frac{1 - p_1}{1 - p_0}\right)$$
+
+Decision rules:
+- **Accept $H_1$** (meets capability threshold $p \ge p_1$): $\text{LLR} \ge \ln\left(\frac{1 - \beta}{\alpha}\right)$
+- **Reject $H_1$** (fails threshold $p \le p_0$): $\text{LLR} \le \ln\left(\frac{\beta}{1 - \alpha}\right)$
+- **Continue**: Otherwise, execute next evaluation repetition.

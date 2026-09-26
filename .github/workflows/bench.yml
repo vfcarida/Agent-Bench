@@ -77,6 +77,10 @@ jobs:
           bench --config-dir configs run-suite pix_basic_v1 --runner scripted
           python scripts/check_golden.py
 
+      - name: Verify Documentation Site Build
+        run: |
+          mkdocs build
+
   credentialed-ci:
     name: Credentialed Real Agent Evaluation (Opt-in)
     needs: offline-ci
