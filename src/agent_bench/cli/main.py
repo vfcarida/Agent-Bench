@@ -274,6 +274,102 @@ def export_dataset_template(domain: str, output: str | None) -> None:
 
 
 @cli.command()
+@click.option("--domain", default=None, help="Filter by domain (e.g. pix_assist, cyber_sandbox). Omit for all.")
+@click.option("--split", default="dev", type=click.Choice(["dev", "holdout"]), help="Dataset split")
+@click.option("--output", default=None, type=click.Path(), help="Target JSONL file path")
+def export_inspect(domain: str | None, split: str, output: str | None) -> None:
+    """Export benchmark tasks to UK AISI Inspect AI dataset JSONL format."""
+    from agent_bench.datasets.loader import load_domain_tasks
+    from agent_bench.export.inspect_ai import export_tasks_to_inspect_dataset
+
+    domains = [domain] if domain else ["pix_assist", "investment_advisor", "sme_business_advisor", "cyber_sandbox"]
+    all_tasks = []
+    for d in domains:
+        try:
+            tasks = load_domain_tasks(d, split=split)
+            all_tasks.extend(tasks)
+        except Exception:
+            pass
+
+    if not all_tasks:
+        console.print("[yellow]No tasks found matching criteria.[/yellow]")
+        return
+
+    out_path = Path(output) if output else Path(f"data/reports/inspect_{domain or 'all'}_{split}.jsonl")
+    samples = export_tasks_to_inspect_dataset(all_tasks, output_path=out_path)
+    console.print(f"[green]Exported {len(samples)} tasks to Inspect AI dataset: {out_path}[/green]")
+
+
+@cli.command()
+@click.argument("run_id")
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+@click.option("--output", default=None, type=click.Path(), help="Target Inspect log JSON file path")
+def export_inspect_log(run_id: str, runs_dir: str, output: str | None) -> None:
+    """Export a run artifact and execution traces to Inspect AI evaluation log JSON."""
+    import json
+    from datetime import UTC, datetime
+    from typing import Any
+
+    from agent_bench.core.artifacts import RunArtifact, TraceEvent, TraceEventType
+    from agent_bench.export.inspect_ai import run_artifact_to_inspect_log
+
+    run_path = Path(runs_dir) / run_id
+    if not run_path.exists():
+        console.print(f"[red]Run directory '{run_path}' not found.[/red]")
+        return
+
+    manifest_file = run_path / "run_manifest.json"
+    manifest: dict[str, Any] = {}
+    if manifest_file.exists():
+        with open(manifest_file, encoding="utf-8") as f:
+            manifest = json.load(f)
+
+    traces_file = run_path / "traces.jsonl"
+    traces: list[TraceEvent] = []
+    if traces_file.exists():
+        with open(traces_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                d = json.loads(line)
+                et = d.get("event_type", "system_event")
+                try:
+                    event_type = TraceEventType(et)
+                except ValueError:
+                    event_type = TraceEventType.SYSTEM_EVENT
+                traces.append(
+                    TraceEvent(
+                        event_type=event_type,
+                        timestamp=datetime.fromisoformat(d["timestamp"]) if "timestamp" in d else datetime.now(UTC),
+                        data=d.get("data", {}),
+                        event_id=d.get("event_id", ""),
+                        parent_id=d.get("parent_id"),
+                    )
+                )
+
+    artifact = RunArtifact(
+        run_id=manifest.get("run_id", run_id),
+        suite_id=manifest.get("suite_id", ""),
+        system_id=manifest.get("system_id", ""),
+        model_id=manifest.get("model_id", ""),
+        tasks_total=manifest.get("tasks_total", 0),
+        tasks_passed=manifest.get("tasks_passed", 0),
+        tasks_failed=manifest.get("tasks_failed", 0),
+        traces=traces,
+        metrics=manifest.get("metrics", {}),
+        metadata=manifest.get("metadata", {}),
+    )
+    artifact.finalize()
+
+    log_data = run_artifact_to_inspect_log(artifact)
+    out_file = Path(output) if output else Path(f"data/reports/inspect_log_{run_id}.json")
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(json.dumps(log_data, indent=2, ensure_ascii=False), encoding="utf-8")
+    console.print(f"[green]Inspect AI evaluation log exported: {out_file}[/green]")
+
+
+@cli.command()
 @click.argument("run_id")
 @click.option("--task-id", "--task", "task_id", default=None, help="Filter by task ID")
 @click.option("--step", default=None, type=int, help="Filter by step index")
@@ -286,14 +382,86 @@ def view_traces(run_id: str, task_id: str | None, step: int | None, limit: int) 
 
 
 @cli.command()
-@click.option("--domain", default=None, help="Filter by domain")
-@click.option("--top", default=20, type=int, help="Number of entries to show")
-def leaderboard(domain: str | None, top: int) -> None:
-    """Show the local leaderboard."""
-    from agent_bench.reports.leaderboard import render_leaderboard_markdown
+@click.option("--domain", default=None, help="Filter leaderboard by domain (e.g. pix_assist, cyber_sandbox)")
+@click.option("--top", "top_n", default=20, type=int, help="Number of top entries to display")
+@click.option(
+    "--format",
+    "output_format",
+    default="table",
+    type=click.Choice(["table", "markdown", "html", "json"]),
+    help="Output presentation format",
+)
+@click.option(
+    "--leaderboard-path",
+    type=click.Path(),
+    default="data/reports/leaderboard.json",
+    help="Path to leaderboard JSON file",
+)
+def leaderboard(domain: str | None, top_n: int, output_format: str, leaderboard_path: str) -> None:
+    """Display system ranking leaderboard across historical benchmark runs."""
+    import json
 
-    md = render_leaderboard_markdown(domain=domain, top_n=top)
-    console.print(md)
+    from rich.table import Table
+
+    from agent_bench.reports.leaderboard import (
+        get_leaderboard,
+        render_leaderboard_html,
+        render_leaderboard_markdown,
+    )
+
+    lb_path = Path(leaderboard_path)
+    entries = get_leaderboard(domain=domain, top_n=top_n, leaderboard_path=lb_path)
+
+    if not entries:
+        console.print(
+            f"[yellow]No leaderboard entries found at '{leaderboard_path}'. Run benchmark suites first to generate rankings.[/yellow]"
+        )
+        return
+
+    if output_format == "markdown":
+        console.print(render_leaderboard_markdown(domain=domain, top_n=top_n, leaderboard_path=lb_path))
+        return
+
+    if output_format == "html":
+        console.print(render_leaderboard_html(domain=domain, top_n=top_n, leaderboard_path=lb_path))
+        return
+
+    if output_format == "json":
+        console.print(json.dumps(entries, indent=2))
+        return
+
+    title = "Agent-Bench Leaderboard"
+    if domain:
+        title += f" — Domain: {domain}"
+
+    table = Table(title=title)
+    table.add_column("Rank", style="bold", justify="center")
+    table.add_column("System ID", style="cyan")
+    table.add_column("Domain", style="magenta")
+    table.add_column("Global", style="bold green", justify="right")
+    table.add_column("Functional", justify="right")
+    table.add_column("Risk", justify="right")
+    table.add_column("Cost", justify="right")
+    table.add_column("Latency", justify="right")
+    table.add_column("Reliability", justify="right")
+    table.add_column("Run ID", style="dim")
+
+    for i, e in enumerate(entries, 1):
+        medal = {1: "1 🥇", 2: "2 🥈", 3: "3 🥉"}.get(i, str(i))
+        table.add_row(
+            medal,
+            str(e.get("system_id", "—")),
+            str(e.get("domain", "—")),
+            f"{e.get('global_score', 0.0):.3f}",
+            f"{e.get('functional_score', 0.0):.3f}",
+            f"{e.get('risk_score', 0.0):.3f}",
+            f"{e.get('cost_score', 0.0):.3f}",
+            f"{e.get('latency_score', 0.0):.3f}",
+            f"{e.get('reliability_score', 0.0):.3f}",
+            str(e.get("run_id", "—"))[:8],
+        )
+
+    console.print(table)
 
 
 @cli.command()
@@ -455,4 +623,6 @@ def check_agreement(annotations: str) -> None:
 
 if __name__ == "__main__":
     cli()
+
+
 

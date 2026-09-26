@@ -249,6 +249,25 @@ python -m pytest tests/unit/test_trace_logger.py -v
 
 ---
 
+## 📚 Documentation & Guides
+
+| Category | Guide | Description |
+| :--- | :--- | :--- |
+| **Getting Started** | [Installation Guide](docs/getting-started/installation.md) | Setup requirements, provider extras, and environment variables |
+| | [Quickstart Guide](docs/getting-started/quickstart.md) | 5-minute smoke evaluation and pipeline walk-through |
+| | [Architecture Overview](docs/getting-started/architecture-overview.md) | Clean Architecture protocols, multi-turn loops, and gated pipelines |
+| **Developer Guides** | [Integrating External Agents](docs/guides/adding-agent.md) | Benchmark LangChain, LangGraph, CrewAI, or custom Python agents |
+| | [Adding a New Domain](docs/guides/adding-domain.md) | Create custom domain scenarios, state mutators, and tools |
+| | [Running Local Models](docs/guides/running-local-models.md) | Benchmark open-weights models using vLLM or Hugging Face |
+| | [Inspect AI Interoperability](docs/guides/inspect-ai-interoperability.md) | Evaluate Agent-Bench tasks with UK/US AISI Inspect AI |
+| **Methodology** | [Hard Safety Gating](docs/methodology/safety-gating.md) | Non-compensable Phase 0 safety invariants and refusal checks |
+| | [Statistical Reliability](docs/methodology/statistical-metrics.md) | Mathematical formulation of Pass@k, Pass^k, and bootstrap CIs |
+| | [Rubric & Tool Grading](docs/methodology/rubric-and-tool-grading.md) | Hierarchical importance weights and critical gate capping |
+| **Reference** | [CLI Reference Manual](docs/reference/cli.md) | Complete reference for all `bench` CLI commands and options |
+
+---
+
 ## 📜 License
 
 This project is licensed under the terms of the **Apache-2.0** License.
+

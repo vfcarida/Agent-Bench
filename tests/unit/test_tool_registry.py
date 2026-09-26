@@ -103,3 +103,48 @@ async def test_task_environment_uses_registry() -> None:
     current_state = env.get_state()
     assert current_state["balance"] == 400.0
     assert current_state["transfer_completed"] is True
+
+
+def test_decorator_registration() -> None:
+    """Verify tool and mutator decorators work as expected."""
+    registry = DomainToolRegistry()
+
+    @registry.tool("dec_tool")
+    class DecTool(ToolAdapter):
+        @property
+        def name(self) -> str:
+            return "dec_tool"
+
+        @property
+        def schema(self) -> dict[str, Any]:
+            return {"name": "dec_tool"}
+
+        async def execute(self, arguments: dict[str, Any]) -> ToolCallResult:
+            return ToolCallResult(tool_name=self.name, arguments=arguments, output="ok")
+
+    @registry.mutator("dec_tool")
+    def dec_mutator(state: dict[str, Any], arguments: dict[str, Any], res: ToolCallResult) -> None:
+        state["decorated"] = True
+
+    tool = registry.get_tool("dec_tool")
+    assert tool is not None
+    assert tool.name == "dec_tool"
+
+    mutator = registry.get_mutator("dec_tool")
+    assert mutator is not None
+    s: dict[str, Any] = {}
+    mutator(s, {}, ToolCallResult(tool_name="dec_tool", arguments={}, output="ok"))
+    assert s["decorated"] is True
+
+
+def test_registry_clear() -> None:
+    """Verify registry clear resets registered components."""
+    registry = DomainToolRegistry()
+    registry.register_tool("temp", MockCustomTool)
+    assert "temp" in registry.registered_tools()
+
+    registry.clear()
+    # After clear, accessing registered_tools reloads builtins cleanly
+    tools = registry.registered_tools()
+    assert "temp" not in tools
+    assert "check_balance" in tools

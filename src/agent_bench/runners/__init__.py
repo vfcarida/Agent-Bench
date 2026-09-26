@@ -1,5 +1,6 @@
 """Runners package for Agent-Bench."""
 
+from agent_bench.runners.callable_runner import CallableAgentRunner
 from agent_bench.runners.case_runner import (
     CaseResult,
     DefaultAgentRunner,
@@ -11,6 +12,7 @@ from agent_bench.runners.scripted import ScriptedAgentRunner
 from agent_bench.runners.suite_runner import run_suite
 
 __all__ = [
+    "CallableAgentRunner",
     "CaseResult",
     "DefaultAgentRunner",
     "DefaultTaskEnvironment",

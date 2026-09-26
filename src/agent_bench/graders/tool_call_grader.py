@@ -15,9 +15,21 @@ class ToolCallGrader:
             return str(pattern.get("tool", pattern.get("name", "")))
         return str(pattern)
 
-    def grade(self, case: dict[str, Any], actual_tool_calls: list[dict[str, Any]]) -> GradeResult:
-        required_patterns = [self._pattern_to_str(p) for p in (case.get("required_tool_patterns") or [])]
-        forbidden_patterns = [self._pattern_to_str(p) for p in (case.get("forbidden_tool_patterns") or [])]
+    def grade(self, case: Any, actual_tool_calls: list[dict[str, Any]]) -> GradeResult:
+        if isinstance(case, dict):
+            req_raw = case.get("required_tool_patterns") or []
+            forb_raw = case.get("forbidden_tool_patterns") or []
+        else:
+            req_raw = getattr(case, "required_tool_patterns", None)
+            forb_raw = getattr(case, "forbidden_tool_patterns", None)
+            if (req_raw is None or forb_raw is None) and hasattr(case, "metadata") and isinstance(case.metadata, dict):
+                req_raw = req_raw if req_raw is not None else case.metadata.get("required_tool_patterns", [])
+                forb_raw = forb_raw if forb_raw is not None else case.metadata.get("forbidden_tool_patterns", [])
+            req_raw = req_raw or []
+            forb_raw = forb_raw or []
+
+        required_patterns = [self._pattern_to_str(p) for p in req_raw]
+        forbidden_patterns = [self._pattern_to_str(p) for p in forb_raw]
         # Filter out empty patterns
         required_patterns = [p for p in required_patterns if p]
         forbidden_patterns = [p for p in forbidden_patterns if p]

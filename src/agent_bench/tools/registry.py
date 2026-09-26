@@ -29,6 +29,24 @@ class DomainToolRegistry:
         """Register a state mutation callback for a specific tool."""
         self._mutators[tool_name] = mutator
 
+    def tool(self, name: str) -> Callable[[ToolFactory], ToolFactory]:
+        """Decorator to register a ToolAdapter class or factory function."""
+
+        def decorator(factory_or_cls: ToolFactory) -> ToolFactory:
+            self.register_tool(name, factory_or_cls)
+            return factory_or_cls
+
+        return decorator
+
+    def mutator(self, tool_name: str) -> Callable[[StateMutator], StateMutator]:
+        """Decorator to register a state mutator callback."""
+
+        def decorator(mutator_fn: StateMutator) -> StateMutator:
+            self.register_mutator(tool_name, mutator_fn)
+            return mutator_fn
+
+        return decorator
+
     def get_tool(self, name: str) -> ToolAdapter | None:
         """Instantiate and return a registered tool by name, or None if not found."""
         self._ensure_builtins()
@@ -46,6 +64,24 @@ class DomainToolRegistry:
         """List all currently registered tool names."""
         self._ensure_builtins()
         return list(self._tools.keys())
+
+    def clear(self) -> None:
+        """Reset registry state for test isolation."""
+        self._tools.clear()
+        self._mutators.clear()
+        self._initialized_builtins = False
+
+    def discover_entry_points(self) -> None:
+        """Discover external tools registered via 'agent_bench.tools' entry points."""
+        import importlib.metadata
+
+        try:
+            entry_points = importlib.metadata.entry_points(group="agent_bench.tools")
+            for ep in entry_points:
+                loaded = ep.load()
+                self.register_tool(ep.name, loaded)
+        except Exception:
+            pass
 
     def _ensure_builtins(self) -> None:
         if not self._initialized_builtins:

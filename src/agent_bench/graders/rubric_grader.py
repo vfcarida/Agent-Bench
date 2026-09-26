@@ -19,11 +19,18 @@ class RubricGrader:
 
     def grade(
         self,
-        case: dict[str, Any],
+        case: Any,
         actual_response: str,
         judge_fn: Callable[..., Any] | None = None,
     ) -> GradeResult:
-        rubric = case.get("rubric", {})
+        if isinstance(case, dict):
+            rubric = case.get("rubric", {})
+        elif hasattr(case, "rubric") and getattr(case, "rubric"):
+            rubric = getattr(case, "rubric")
+        elif hasattr(case, "metadata") and isinstance(case.metadata, dict):
+            rubric = case.metadata.get("rubric", {})
+        else:
+            rubric = {}
         dimensions = rubric.get("dimensions", [])
 
         if not dimensions:

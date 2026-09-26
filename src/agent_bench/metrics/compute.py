@@ -11,7 +11,11 @@ def compute_pass_k(results: list[bool], k: int = 1) -> float:
     Uses the unbiased estimator: 1 - C(n-c, k) / C(n, k)
     where n = total samples, c = correct samples.
     """
+    if k <= 0:
+        return 0.0
     n = len(results)
+    if n == 0:
+        return 0.0
     c = sum(results)
     if n < k:
         return float(c > 0)
@@ -31,10 +35,12 @@ def compute_pass_hat_k(results: list[bool], k: int = 1) -> float:
 
     Ref: tau-bench / tau^2-bench reliability criterion for high-risk domains.
     """
+    if k <= 0:
+        return 0.0
     n = len(results)
-    c = sum(results)
     if n == 0:
         return 0.0
+    c = sum(results)
     if n < k:
         return float(c == n and n > 0)
     if c < k:
