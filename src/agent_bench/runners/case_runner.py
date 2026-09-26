@@ -21,6 +21,7 @@ from agent_bench.core.config import BenchConfig
 from agent_bench.core.protocols import AgentRunner, Evaluator, TaskEnvironment
 from agent_bench.core.scenarios import Task
 from agent_bench.core.settings import settings
+from agent_bench.core.user_simulator import UserSimulator
 from agent_bench.datasets.loader import load_domain_tasks
 from agent_bench.graders.gated_evaluator import GatedEvaluator
 from agent_bench.graders.thinking_parser import parse_thinking_response
@@ -55,80 +56,10 @@ class CaseResult:
 
 
 def _get_default_tool(tool_name: str) -> ToolAdapter | None:
-    """Lazy factory for standard domain tools."""
-    if tool_name in (
-        "check_balance",
-        "validate_pix_key",
-        "execute_pix_transfer",
-        "request_user_confirmation",
-    ):
-        from agent_bench.tools.pix_tools import (
-            CheckBalanceTool,
-            ExecutePixTransferTool,
-            RequestUserConfirmationTool,
-            ValidatePixKeyTool,
-        )
+    """Lazy factory for standard domain tools via DomainToolRegistry."""
+    from agent_bench.tools.registry import default_tool_registry
 
-        mapping: dict[str, type[ToolAdapter]] = {
-            "check_balance": CheckBalanceTool,
-            "validate_pix_key": ValidatePixKeyTool,
-            "execute_pix_transfer": ExecutePixTransferTool,
-            "request_user_confirmation": RequestUserConfirmationTool,
-        }
-        return mapping[tool_name]()
-
-    if tool_name in (
-        "get_client_profile",
-        "get_portfolio_summary",
-        "calculate_return",
-        "check_suitability",
-        "search_products",
-        "simulate_allocation",
-    ):
-        from agent_bench.tools.investment_tools import (
-            CalculateReturnTool,
-            CheckSuitabilityTool,
-            GetClientProfileTool,
-            GetPortfolioSummaryTool,
-            SearchProductsTool,
-            SimulateAllocationTool,
-        )
-
-        mapping_inv: dict[str, type[ToolAdapter]] = {
-            "get_client_profile": GetClientProfileTool,
-            "get_portfolio_summary": GetPortfolioSummaryTool,
-            "calculate_return": CalculateReturnTool,
-            "check_suitability": CheckSuitabilityTool,
-            "search_products": SearchProductsTool,
-            "simulate_allocation": SimulateAllocationTool,
-        }
-        return mapping_inv[tool_name]()
-
-    if tool_name in (
-        "check_firewall_rules",
-        "query_siem_logs",
-        "create_incident_ticket",
-        "escalate_to_soc",
-        "execute_sandboxed_command",
-    ):
-        from agent_bench.tools.cyber_tools import (
-            CheckFirewallRulesTool,
-            CreateIncidentTicketTool,
-            EscalateToSocTool,
-            ExecuteSandboxedCommandTool,
-            QuerySiemLogsTool,
-        )
-
-        mapping_cyber: dict[str, type[ToolAdapter]] = {
-            "check_firewall_rules": CheckFirewallRulesTool,
-            "query_siem_logs": QuerySiemLogsTool,
-            "create_incident_ticket": CreateIncidentTicketTool,
-            "escalate_to_soc": EscalateToSocTool,
-            "execute_sandboxed_command": ExecuteSandboxedCommandTool,
-        }
-        return mapping_cyber[tool_name]()
-
-    return None
+    return default_tool_registry.get_tool(tool_name)
 
 
 class DefaultTaskEnvironment:
@@ -208,46 +139,12 @@ class DefaultTaskEnvironment:
     def _apply_default_state_mutation(
         self, tool_name: str, arguments: dict[str, Any], result: ToolCallResult
     ) -> None:
-        """Default domain state transitions for standard tool operations."""
-        if tool_name in ("execute_pix_transfer", "transfer_pix") and result.success:
-            amount = float(arguments.get("amount", 0.0))
-            if "balance" in self._state and isinstance(
-                self._state["balance"], (int, float)
-            ):
-                self._state["balance"] = round(
-                    float(self._state["balance"]) - amount, 2
-                )
-            self._state["amount"] = amount
-            self._state["transfer_completed"] = True
-            if isinstance(result.output, dict):
-                self._state["last_transaction"] = result.output
-        elif tool_name == "request_user_confirmation":
-            self._state["confirmation_requested"] = True
-        elif tool_name == "validate_pix_key":
-            self._state["key_validated"] = result.success
-            if isinstance(result.output, dict) and "owner_name" in result.output:
-                self._state["recipient_name"] = result.output["owner_name"]
-        elif tool_name == "simulate_allocation" and result.success:
-            self._state["allocation_simulated"] = True
-        elif tool_name == "check_firewall_rules" and result.success:
-            self._state["analysis_completed"] = True
-            self._state["unnecessary_ports_identified"] = [8080, 22, 3389]
-            self._state["recommendation_provided"] = True
-            self._state["logged"] = True
-        elif tool_name == "query_siem_logs" and result.success:
-            self._state["anomalies_detected"] = True
-            self._state["brute_force_identified"] = True
-            self._state["off_hours_flagged"] = True
-            self._state["escalation_recommended"] = True
-            self._state["logged"] = True
-        elif tool_name == "create_incident_ticket" and result.success:
-            self._state["ticket_created"] = True
-            self._state["logged"] = True
-            if isinstance(result.output, dict):
-                self._state["ticket_id"] = result.output.get("ticket_id")
-        elif tool_name == "escalate_to_soc" and result.success:
-            self._state["escalation_recommended"] = True
-            self._state["logged"] = True
+        """Default domain state transitions for standard tool operations via DomainToolRegistry."""
+        from agent_bench.tools.registry import default_tool_registry
+
+        mutator = default_tool_registry.get_mutator(tool_name)
+        if mutator is not None:
+            mutator(self._state, arguments, result)
 
     def get_state(self) -> dict[str, Any]:
         return dict(self._state)
@@ -265,10 +162,12 @@ class DefaultAgentRunner:
         system_id: str = "default_system",
         model: ModelAdapter | None = None,
         prompt_formatter: PromptFormatter | None = None,
+        user_simulator: UserSimulator | None = None,
     ) -> None:
         self._system_id = system_id
         self._model = model
         self._prompt_formatter = prompt_formatter
+        self._user_simulator = user_simulator
 
     @property
     def system_id(self) -> str:
@@ -285,8 +184,12 @@ class DefaultAgentRunner:
         *,
         max_steps: int = 10,
         seed: int | None = None,
+        user_simulator: UserSimulator | None = None,
     ) -> tuple[dict[str, Any], list[TraceEvent]]:
         environment.reset(task.initial_state)
+        active_simulator = user_simulator if user_simulator is not None else self._user_simulator
+        if active_simulator is not None:
+            active_simulator.reset(task)
 
         if self._model is not None:
             exec_res = await _model_execute(
@@ -295,6 +198,7 @@ class DefaultAgentRunner:
                 environment=environment,
                 max_steps=max_steps,
                 seed=seed,
+                user_simulator=active_simulator,
             )
             if isinstance(exec_res, tuple):
                 result, collected_traces = exec_res
@@ -309,6 +213,18 @@ class DefaultAgentRunner:
                 result["final_state"] = current_env_state
             return result, []
 
+    async def close(self) -> None:
+        """Closes any underlying model adapter or client connections."""
+        if self._model is not None and hasattr(self._model, "close"):
+            await self._model.close()
+
+    async def __aenter__(self) -> "DefaultAgentRunner":
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
+
+
 
 async def execute_task(
     task: Task,
@@ -321,6 +237,7 @@ async def execute_task(
     agent_runner: AgentRunner | None = None,
     environment: TaskEnvironment | None = None,
     evaluator: Evaluator | None = None,
+    user_simulator: UserSimulator | None = None,
     run_id: str = "run_default",
 ) -> CaseResult:
     """Execute a single task and return CaseResult with real measured metrics.
@@ -392,12 +309,20 @@ async def execute_task(
     start_time = time.perf_counter()
     env = environment or DefaultTaskEnvironment()
     runner = agent_runner or DefaultAgentRunner(
-        system_id=system_id, model=model, prompt_formatter=prompt_formatter
+        system_id=system_id,
+        model=model,
+        prompt_formatter=prompt_formatter,
+        user_simulator=user_simulator,
     )
 
-    simulated_result, runner_traces = await runner.run_task(
-        task, env, seed=seed
-    )
+    try:
+        simulated_result, runner_traces = await runner.run_task(
+            task, env, seed=seed, user_simulator=user_simulator
+        )
+    except TypeError:
+        simulated_result, runner_traces = await runner.run_task(
+            task, env, seed=seed
+        )
     elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 
     for tr in runner_traces:
@@ -491,6 +416,7 @@ async def _model_execute(
     environment: TaskEnvironment | None = None,
     max_steps: int = 10,
     seed: int | None = None,
+    user_simulator: UserSimulator | None = None,
 ) -> tuple[dict[str, Any], list[TraceEvent]] | dict[str, Any]:
     """Execute a task using a real ModelAdapter with multi-turn ReAct reasoning."""
     env = environment or DefaultTaskEnvironment()
@@ -532,6 +458,22 @@ async def _model_execute(
 
         if not response.tool_calls:
             messages.append({"role": "assistant", "content": response.content})
+            if user_simulator is not None:
+                user_turn = await user_simulator.step(response.content, messages, task)
+                if not user_turn.finished and user_turn.content:
+                    messages.append({"role": "user", "content": user_turn.content})
+                    collected_traces.append(
+                        TraceEvent(
+                            event_type=TraceEventType.USER_MESSAGE,
+                            data={
+                                "role": "user",
+                                "content": user_turn.content,
+                                "step": step,
+                                "metadata": user_turn.metadata,
+                            },
+                        )
+                    )
+                    continue
             break
 
         current_signatures = {
@@ -556,6 +498,13 @@ async def _model_execute(
         for tc in response.tool_calls:
             tc_name = tc.get("name", "")
             tc_args = tc.get("arguments", {})
+            if isinstance(tc_args, str):
+                try:
+                    tc_args = json.loads(tc_args)
+                except (json.JSONDecodeError, ValueError):
+                    tc_args = {}
+            elif not isinstance(tc_args, dict):
+                tc_args = {}
             if tc_name:
                 all_tools_called.append(tc_name)
                 all_tool_calls.append(tc)

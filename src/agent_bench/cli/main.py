@@ -89,6 +89,13 @@ def validate_datasets(fixtures_dir: str) -> None:
     default=None,
     help="System ID whose model acts as the LLM judge (requires --enable-llm-judge).",
 )
+@click.option(
+    "--concurrency",
+    "-c",
+    default=1,
+    type=int,
+    help="Maximum concurrent tasks to evaluate simultaneously (default: 1).",
+)
 @click.pass_context
 def run_suite(
     ctx: click.Context,
@@ -100,6 +107,7 @@ def run_suite(
     runner: str,
     enable_llm_judge: bool,
     llm_judge_system: str | None,
+    concurrency: int,
 ) -> None:
     """Run a complete benchmark suite."""
     from agent_bench.runners.suite_runner import run_suite as _run_suite
@@ -133,6 +141,7 @@ def run_suite(
                 runner_type=runner,
                 enable_llm_judge=enable_llm_judge,
                 llm_judge_system_id=llm_judge_system,
+                concurrency=concurrency,
             )
         )
     except ConfigError as e:
@@ -240,11 +249,12 @@ def compare_runs(run_ids: tuple[str, ...], output: str) -> None:
 @click.argument("run_id")
 @click.option("--format", "fmt", default="markdown", type=click.Choice(["markdown", "html"]))
 @click.option("--output-dir", default="data/reports", type=click.Path())
-def generate_report(run_id: str, fmt: str, output_dir: str) -> None:
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+def generate_report(run_id: str, fmt: str, output_dir: str, runs_dir: str) -> None:
     """Generate a report from a run."""
     if fmt == "html":
         from agent_bench.reports.html_report import generate_html_report
-        out = generate_html_report(run_id, Path(output_dir))
+        out = generate_html_report(run_id, Path(output_dir), runs_dir=Path(runs_dir))
     else:
         from agent_bench.reports.generator import generate
         out = generate(run_id, fmt, Path(output_dir))

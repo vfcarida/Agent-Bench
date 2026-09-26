@@ -157,3 +157,36 @@ def test_generate_html_report_locale(tmp_path):
         os.chdir(old_cwd)
 
 
+def test_generate_html_report_custom_runs_dir_and_filter(tmp_path):
+    custom_runs = tmp_path / "custom_runs"
+    custom_runs.mkdir()
+    run_data = {
+        "run_id": "run-filter-custom-1234",
+        "started_at": "2026-01-01T00:00:00",
+        "tasks_total": 5,
+        "tasks_passed": 5,
+        "tasks_failed": 0,
+        "scorecards": [
+            {
+                "system_id": "test_agent",
+                "domain": "pix_assist",
+                "functional_score": 1.0,
+                "global_score": 0.95,
+            }
+        ],
+    }
+    (custom_runs / "run-filter-custom-1234.json").write_text(json.dumps(run_data))
+    output_dir = tmp_path / "custom_reports"
+
+    # Call directly with runs_dir parameter
+    result = generate_html_report(
+        "run-filter-custom-1234", output_dir, runs_dir=custom_runs
+    )
+    assert result.exists()
+    content = result.read_text(encoding="utf-8")
+    assert "run-filter-custom" in content
+    assert "id=\"tableFilter\"" in content
+    assert "test_agent" in content
+
+
+

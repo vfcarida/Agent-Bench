@@ -188,9 +188,53 @@ async def test_openai_adapter_tool_calling_contract() -> None:
         tc = res.tool_calls[0]
         assert tc["id"] == "call_abc123"
         assert tc["name"] == "check_balance"
-        assert tc["arguments"] == '{"account_id": "ACC_9988"}'
+        assert tc["arguments"] == {"account_id": "ACC_9988"}
         assert res.tokens_in == 85
         assert res.tokens_out == 24
+    finally:
+        await adapter.close()
+
+
+@pytest.mark.asyncio
+async def test_openai_adapter_malformed_tool_call_arguments_fallback() -> None:
+    """Validate OpenAIModelAdapter handles malformed tool arguments without crashing."""
+    malformed_cassette = {
+        "id": "chatcmpl-Malformed123",
+        "object": "chat.completion",
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call_bad123",
+                            "type": "function",
+                            "function": {
+                                "name": "check_balance",
+                                "arguments": "{malformed json",
+                            },
+                        }
+                    ],
+                },
+                "finish_reason": "tool_calls",
+            }
+        ],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+    }
+
+    def mock_transport_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=malformed_cassette)
+
+    transport = httpx.MockTransport(mock_transport_handler)
+    adapter = OpenAIModelAdapter(model_id="gpt-4o", api_key="test-key")
+    adapter._client = httpx.AsyncClient(transport=transport)
+
+    try:
+        res = await adapter.generate([{"role": "user", "content": "test"}])
+        assert len(res.tool_calls) == 1
+        assert res.tool_calls[0]["arguments"] == {"_raw": "{malformed json"}
     finally:
         await adapter.close()
 
@@ -323,3 +367,33 @@ async def test_anthropic_adapter_error_contract() -> None:
         assert exc_info.value.response.status_code == 400
     finally:
         await adapter.close()
+
+
+@pytest.mark.asyncio
+async def test_model_adapter_lifecycle_and_context_manager() -> None:
+    """Verify that model adapters properly close HTTP clients and support async context managers."""
+    # 1. Direct close on OpenAIModelAdapter
+    openai_adapter = OpenAIModelAdapter(api_key="test-key")
+    assert not openai_adapter._client.is_closed
+    await openai_adapter.close()
+    assert openai_adapter._client.is_closed
+    # Calling close again must be safe and idempotent
+    await openai_adapter.close()
+
+    # 2. Async context manager on AnthropicModelAdapter
+    async with AnthropicModelAdapter(api_key="test-key") as anthropic_adapter:
+        assert not anthropic_adapter._client.is_closed
+    assert anthropic_adapter._client.is_closed
+
+
+@pytest.mark.asyncio
+async def test_default_agent_runner_lifecycle() -> None:
+    """Verify that DefaultAgentRunner closes its underlying model adapter."""
+    from agent_bench.runners.case_runner import DefaultAgentRunner
+
+    adapter = OpenAIModelAdapter(api_key="test-key")
+    async with DefaultAgentRunner(system_id="test_sys", model=adapter) as runner:
+        assert runner.system_id == "test_sys"
+        assert not adapter._client.is_closed
+    assert adapter._client.is_closed
+

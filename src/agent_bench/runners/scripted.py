@@ -32,6 +32,17 @@ class ScriptedAgentRunner:
     def architecture(self) -> str:
         return "scripted_policy"
 
+    async def close(self) -> None:
+        """No-op close for scripted runner."""
+        pass
+
+    async def __aenter__(self) -> "ScriptedAgentRunner":
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
+
+
     async def run_task(
         self,
         task: Task,
@@ -39,6 +50,7 @@ class ScriptedAgentRunner:
         *,
         max_steps: int = 10,
         seed: int | None = None,
+        user_simulator: Any = None,
     ) -> tuple[dict[str, Any], list[TraceEvent]]:
         """Execute task using domain-specific scripted policy."""
         environment.reset(task.initial_state)

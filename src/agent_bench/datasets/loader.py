@@ -5,12 +5,7 @@ from typing import Any
 
 import yaml
 
-from agent_bench.core.scenarios import (
-    BusinessCriticality,
-    RefusalMode,
-    Severity,
-    Task,
-)
+from agent_bench.core.scenarios import Task
 
 # Canonical dataset roots
 _REPO_ROOT = Path(__file__).parents[3]
@@ -20,66 +15,8 @@ _FIXTURES_DIR = _REPO_ROOT / "data" / "fixtures"
 
 def _parse_task_or_case(item: dict[str, Any], domain_id: str) -> Task:
     """Parse a task dict or EvalCase dict into a Task object."""
-    t_id = str(item.get("task_id") or item.get("id", ""))
-    name = str(item.get("name") or item.get("prompt_or_user_goal") or item.get("prompt") or t_id)
-    description = str(item.get("description") or item.get("prompt_or_user_goal") or item.get("prompt", ""))
+    return Task.from_dict(item, domain_id=domain_id)
 
-    input_messages = item.get("input_messages")
-    if not input_messages:
-        prompt_text = item.get("prompt_or_user_goal") or item.get("prompt", "")
-        if prompt_text:
-            input_messages = [{"role": "user", "content": prompt_text}]
-        else:
-            input_messages = []
-
-    exp_state = (
-        item.get("expected_final_state")
-        or item.get("expected_state_changes")
-        or (item.get("expected_outcome", {}).get("state_changes", {}))
-        or {}
-    )
-
-    req_cap = item.get("required_capabilities") or item.get("evidence_requirements", [])
-
-    refusal_raw = item.get("expected_refusal_mode", "none")
-    try:
-        refusal_mode = RefusalMode(refusal_raw)
-    except ValueError:
-        refusal_mode = RefusalMode.NONE
-
-    sev_raw = item.get("severity") or item.get("risk_level", "medium")
-    try:
-        severity = Severity(sev_raw)
-    except ValueError:
-        severity = Severity.MEDIUM
-
-    crit_raw = item.get("business_criticality", "operational")
-    try:
-        criticality = BusinessCriticality(crit_raw)
-    except ValueError:
-        criticality = BusinessCriticality.OPERATIONAL
-
-    return Task(
-        task_id=t_id,
-        domain=str(item.get("domain") or domain_id),
-        name=name,
-        description=description,
-        input_messages=input_messages,
-        initial_state=item.get("initial_state", {}),
-        expected_final_state=exp_state,
-        allowed_tools=item.get("allowed_tools", []),
-        required_capabilities=req_cap,
-        expected_refusal_mode=refusal_mode,
-        gold_references=item.get("gold_references") or item.get("knowledge_refs", []),
-        evidence_strings=item.get("evidence_strings", []),
-        answer_format=item.get("answer_format", "free_form"),
-        expected_deliverables=item.get("expected_deliverables", []),
-        severity=severity,
-        business_criticality=criticality,
-        tags=item.get("tags", []),
-        task_version=str(item.get("task_version") or item.get("version", "1.0.0")),
-        metadata=item.get("metadata", {}),
-    )
 
 
 def _resolve_dataset_file(domain_id: str, split: str, data_dir: Path | None) -> Path | None:

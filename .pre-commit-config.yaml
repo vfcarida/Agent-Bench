@@ -17,3 +17,28 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.5
+          - pydantic-settings>=2.0
+          - pyyaml>=6.0
+          - click>=8.1
+          - rich>=13.0
+          - structlog>=23.2
+          - pytest>=7.4
+        args: [--config-file=pyproject.toml]
+        files: ^src/
+
+  - repo: local
+    hooks:
+      - id: check-gold-integrity
+        name: Check Gold Dataset Integrity
+        entry: python scripts/check_gold_integrity.py
+        language: system
+        pass_filenames: false
+        files: ^datasets/gold/
+

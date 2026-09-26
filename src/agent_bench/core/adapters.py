@@ -75,6 +75,17 @@ class ModelAdapter(ABC):
         seed: int | None = None,
     ) -> ModelResponse: ...
 
+    async def close(self) -> None:
+        """Closes any underlying network connections or client resources."""
+        pass
+
+    async def __aenter__(self) -> "ModelAdapter":
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()
+
+
 
 class AgentSystemAdapter(ABC):
     """Adapter for a complete agent system (model + tools + retrieval + orchestration)."""

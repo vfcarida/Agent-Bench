@@ -20,39 +20,8 @@ def _load_yaml_cases(file_path: Path) -> list[dict[str, Any]]:
 
 
 def _dict_to_eval_case(d: dict[str, Any]) -> EvalCase:
-    return EvalCase(
-        id=d["id"],
-        version=d.get("version", "1.0.0"),
-        family=d["family"],
-        domain=d["domain"],
-        locale=d.get("locale", "pt-BR"),
-        difficulty=d.get("difficulty", "medium"),
-        risk_level=d.get("risk_level", "low"),
-        source_type=d.get("source_type", "human_gold"),
-        split=d.get("split", "dev"),
-        prompt_or_user_goal=d.get("prompt_or_user_goal", ""),
-        input_messages=d.get("input_messages", []),
-        initial_state=d.get("initial_state", {}),
-        allowed_tools=d.get("allowed_tools", []),
-        forbidden_tools=d.get("forbidden_tools", []),
-        policy_refs=d.get("policy_refs", []),
-        knowledge_refs=d.get("knowledge_refs", []),
-        expected_outcome=d.get("expected_outcome", {}),
-        expected_state_changes=d.get("expected_state_changes", {}),
-        required_tool_patterns=d.get("required_tool_patterns", []),
-        forbidden_tool_patterns=d.get("forbidden_tool_patterns", []),
-        evidence_requirements=d.get("evidence_requirements", []),
-        evidence_strings=d.get("evidence_strings", []),
-        grading_strategy=d.get("grading_strategy", "state_based"),
-        rubric=d.get("rubric", {}),
-        answer_format=d.get("answer_format", "free_form"),
-        expected_deliverables=d.get("expected_deliverables", []),
-        metadata=d.get("metadata", {}),
-        tags=d.get("tags", []),
-        severity=d.get("severity", "medium"),
-        business_criticality=d.get("business_criticality", "operational"),
-        expected_refusal_mode=d.get("expected_refusal_mode", "none"),
-    )
+    return EvalCase.from_dict(d)
+
 
 
 _SOURCE_TO_DIR = {

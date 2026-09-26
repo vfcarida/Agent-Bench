@@ -154,3 +154,54 @@ async def test_docker_task_environment_delegation() -> None:
         assert res.success
 
     docker_env.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_sandboxed_command_security_restrictions() -> None:
+    """Verify that dangerous shell operators, command chaining, and path traversal are rejected."""
+    env = SandboxedTaskEnvironment(timeout=5.0)
+    try:
+        # 1. Shell chaining with &&
+        res_chain = await env.execute_tool(
+            "execute_sandboxed_command", {"command": "echo harmless && whoami"}
+        )
+        assert not res_chain.success
+        assert "Security violation" in str(res_chain.output.get("stderr"))
+
+        # 2. Shell injection with semicolon
+        res_semi = await env.execute_tool(
+            "execute_sandboxed_command", {"command": "echo 1; echo 2"}
+        )
+        assert not res_semi.success
+        assert "Security violation" in str(res_semi.output.get("stderr"))
+
+        # 3. Piping operator
+        res_pipe = await env.execute_tool(
+            "execute_sandboxed_command", {"command": "echo test | grep test"}
+        )
+        assert not res_pipe.success
+        assert "Security violation" in str(res_pipe.output.get("stderr"))
+
+        # 4. Command substitution
+        res_sub = await env.execute_tool(
+            "execute_sandboxed_command", {"command": "echo $(id)"}
+        )
+        assert not res_sub.success
+        assert "Security violation" in str(res_sub.output.get("stderr"))
+
+        # 5. Path traversal with ../
+        res_trav = await env.execute_tool(
+            "execute_sandboxed_command", {"command": "cat ../../secret.txt"}
+        )
+        assert not res_trav.success
+        assert "Security violation" in str(res_trav.output.get("stderr"))
+
+        # 6. Escaping cwd via cd
+        res_cd = await env.execute_tool(
+            "execute_sandboxed_command", {"command": "cd .."}
+        )
+        assert not res_cd.success
+        assert "Security violation" in str(res_cd.output.get("stderr"))
+    finally:
+        env.cleanup()
+

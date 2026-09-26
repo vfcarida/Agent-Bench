@@ -1,5 +1,6 @@
 """OpenAI model adapter."""
 
+import json
 import os
 import time
 from typing import Any
@@ -76,14 +77,26 @@ class OpenAIModelAdapter(ModelAdapter):
         content = message.get("content") or ""
 
         tool_calls_raw = message.get("tool_calls") or []
-        tool_calls = [
-            {
-                "id": tc["id"],
-                "name": tc["function"]["name"],
-                "arguments": tc["function"]["arguments"],
-            }
-            for tc in tool_calls_raw
-        ]
+        tool_calls = []
+        for tc in tool_calls_raw:
+            fn = tc.get("function", {})
+            raw_args = fn.get("arguments", "{}")
+            if isinstance(raw_args, str):
+                try:
+                    parsed_args = json.loads(raw_args)
+                except (json.JSONDecodeError, ValueError):
+                    parsed_args = {"_raw": raw_args}
+            elif isinstance(raw_args, dict):
+                parsed_args = raw_args
+            else:
+                parsed_args = {}
+            tool_calls.append(
+                {
+                    "id": tc.get("id", ""),
+                    "name": fn.get("name", ""),
+                    "arguments": parsed_args,
+                }
+            )
 
         usage = data.get("usage", {})
 
@@ -98,4 +111,7 @@ class OpenAIModelAdapter(ModelAdapter):
         )
 
     async def close(self) -> None:
-        await self._client.aclose()
+        """Closes the underlying httpx AsyncClient."""
+        if hasattr(self, "_client") and not self._client.is_closed:
+            await self._client.aclose()
+

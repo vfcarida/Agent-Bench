@@ -20,6 +20,7 @@ class TraceEventType(str, Enum):
     SYSTEM_EVENT = "system_event"
     THINKING_BLOCK = "thinking_block"
     ADAPTER_SWAP = "adapter_swap"
+    USER_MESSAGE = "user_message"
 
 
 @dataclass

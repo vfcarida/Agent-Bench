@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -229,7 +230,15 @@ class SandboxedTaskEnvironment(TaskEnvironment):
     async def _run_in_process_sandbox(
         self, command: str, timeout: float
     ) -> ToolCallResult:
-        """Executes a command in an unprivileged process sandbox with stripped env."""
+        """Executes a command safely in an unprivileged process sandbox with stripped env.
+
+        Enforces:
+        - shell=False execution to prevent command injection and host breakout
+        - Prevention of shell metacharacters and chaining operators (&, |, ;, `, $(), >, <)
+        - Path traversal prevention outside self._sandbox_dir
+        - Sanitized environment variables (clean_env)
+        - Builtin emulation for safe commands (pwd, cd, set, echo)
+        """
         # Strictly sanitize environment to prevent leakage of secrets / tokens
         clean_env: dict[str, str] = {
             "PATH": os.environ.get("PATH", ""),
@@ -239,13 +248,241 @@ class SandboxedTaskEnvironment(TaskEnvironment):
             "TMP": str(self._sandbox_dir),
         }
 
+        # Security check 1: Reject dangerous shell operators that allow chaining, redirection, or subshells
+        forbidden_patterns = [";", "|", "`", "$(", ">", "<", "&"]
+        for pattern in forbidden_patterns:
+            if pattern in command:
+                return ToolCallResult(
+                    tool_name="execute_sandboxed_command",
+                    arguments={"command": command, "timeout": timeout},
+                    output={
+                        "command": command,
+                        "stdout": "",
+                        "stderr": (
+                            f"Security violation: Shell operator '{pattern}' is forbidden in isolated process sandbox. "
+                            "Use Docker sandbox for complex shell pipelines."
+                        ),
+                        "exit_code": 126,
+                        "sandbox_type": "isolated_process",
+                    },
+                    success=False,
+                    error=f"Security violation: Forbidden shell operator '{pattern}'",
+                )
+
+        # Security check 2: Reject path traversal patterns
+        traversal_patterns = ["../", "..\\"]
+        for p in traversal_patterns:
+            if p in command.replace(" ", ""):
+                return ToolCallResult(
+                    tool_name="execute_sandboxed_command",
+                    arguments={"command": command, "timeout": timeout},
+                    output={
+                        "command": command,
+                        "stdout": "",
+                        "stderr": f"Security violation: Path traversal pattern '{p}' is forbidden in sandbox.",
+                        "exit_code": 126,
+                        "sandbox_type": "isolated_process",
+                    },
+                    success=False,
+                    error=f"Security violation: Path traversal attempt '{p}'",
+                )
+
+        # Tokenize command safely
+        try:
+            tokens = shlex.split(command, posix=(os.name != "nt"))
+        except Exception as e:
+            return ToolCallResult(
+                tool_name="execute_sandboxed_command",
+                arguments={"command": command, "timeout": timeout},
+                output={
+                    "command": command,
+                    "stdout": "",
+                    "stderr": f"Command parsing error: {e}",
+                    "exit_code": 127,
+                    "sandbox_type": "isolated_process",
+                },
+                success=False,
+                error=f"Command parsing error: {e}",
+            )
+
+        if not tokens:
+            return ToolCallResult(
+                tool_name="execute_sandboxed_command",
+                arguments={"command": command, "timeout": timeout},
+                output={
+                    "command": command,
+                    "stdout": "",
+                    "stderr": "",
+                    "exit_code": 0,
+                    "sandbox_type": "isolated_process",
+                },
+                success=True,
+            )
+
+        # Security check 3: Verify that path arguments do not access external host secrets
+        resolved_sandbox = self._sandbox_dir.resolve()
+        for arg in tokens[1:]:
+            # If an argument is a path outside sandbox
+            if (os.name == "nt" and len(arg) >= 3 and arg[1:3] in (":\\", ":/")) or (
+                os.name != "nt" and arg.startswith("/")
+            ):
+                try:
+                    resolved_arg = Path(arg).resolve()
+                    if resolved_arg.is_relative_to(resolved_sandbox):
+                        pass
+                    elif resolved_arg.exists():
+                        return ToolCallResult(
+                            tool_name="execute_sandboxed_command",
+                            arguments={"command": command, "timeout": timeout},
+                            output={
+                                "command": command,
+                                "stdout": "",
+                                "stderr": f"Security violation: Access to host path '{arg}' outside sandbox is forbidden.",
+                                "exit_code": 126,
+                                "sandbox_type": "isolated_process",
+                            },
+                            success=False,
+                            error=f"Security violation: Host path access '{arg}'",
+                        )
+                except Exception:
+                    pass
+
+        # Handle safe builtins directly without host shell
+        first_token_lower = tokens[0].lower()
+        if first_token_lower in ("cd", "pwd"):
+            if len(tokens) == 1:
+                return ToolCallResult(
+                    tool_name="execute_sandboxed_command",
+                    arguments={"command": command, "timeout": timeout},
+                    output={
+                        "command": command,
+                        "stdout": f"{self._sandbox_dir}\n",
+                        "stderr": "",
+                        "exit_code": 0,
+                        "sandbox_type": "isolated_process",
+                    },
+                    success=True,
+                )
+            target = (self._sandbox_dir / tokens[1]).resolve()
+            if not target.is_relative_to(resolved_sandbox):
+                return ToolCallResult(
+                    tool_name="execute_sandboxed_command",
+                    arguments={"command": command, "timeout": timeout},
+                    output={
+                        "command": command,
+                        "stdout": "",
+                        "stderr": "Security violation: Cannot navigate outside sandbox directory\n",
+                        "exit_code": 1,
+                        "sandbox_type": "isolated_process",
+                    },
+                    success=False,
+                    error="Security violation: Sandbox breakout attempt",
+                )
+            return ToolCallResult(
+                tool_name="execute_sandboxed_command",
+                arguments={"command": command, "timeout": timeout},
+                output={
+                    "command": command,
+                    "stdout": f"{target}\n",
+                    "stderr": "",
+                    "exit_code": 0,
+                    "sandbox_type": "isolated_process",
+                },
+                success=True,
+            )
+
+        if first_token_lower == "set":
+            if len(tokens) == 1:
+                env_lines = "".join(f"{k}={v}\n" for k, v in clean_env.items())
+                return ToolCallResult(
+                    tool_name="execute_sandboxed_command",
+                    arguments={"command": command, "timeout": timeout},
+                    output={
+                        "command": command,
+                        "stdout": env_lines,
+                        "stderr": "",
+                        "exit_code": 0,
+                        "sandbox_type": "isolated_process",
+                    },
+                    success=True,
+                )
+            var_name = tokens[1]
+            if var_name in clean_env:
+                return ToolCallResult(
+                    tool_name="execute_sandboxed_command",
+                    arguments={"command": command, "timeout": timeout},
+                    output={
+                        "command": command,
+                        "stdout": f"{var_name}={clean_env[var_name]}\n",
+                        "stderr": "",
+                        "exit_code": 0,
+                        "sandbox_type": "isolated_process",
+                    },
+                    success=True,
+                )
+            return ToolCallResult(
+                tool_name="execute_sandboxed_command",
+                arguments={"command": command, "timeout": timeout},
+                output={
+                    "command": command,
+                    "stdout": "",
+                    "stderr": f"Environment variable {var_name} not defined\n",
+                    "exit_code": 1,
+                    "sandbox_type": "isolated_process",
+                },
+                success=True,
+            )
+
+        if first_token_lower == "echo":
+            expanded_tokens: list[str] = []
+            for t in tokens[1:]:
+                if t.startswith("$"):
+                    var = t[1:]
+                    expanded_tokens.append(clean_env.get(var, ""))
+                else:
+                    expanded_tokens.append(t)
+            echo_out = " ".join(expanded_tokens) + "\n"
+            return ToolCallResult(
+                tool_name="execute_sandboxed_command",
+                arguments={"command": command, "timeout": timeout},
+                output={
+                    "command": command,
+                    "stdout": echo_out,
+                    "stderr": "",
+                    "exit_code": 0,
+                    "sandbox_type": "isolated_process",
+                },
+                success=True,
+            )
+
+        # Resolve binary executable
+        executable = shutil.which(tokens[0], path=clean_env.get("PATH"))
+        if executable is None:
+            executable = shutil.which(tokens[0])
+
+        if executable is None:
+            return ToolCallResult(
+                tool_name="execute_sandboxed_command",
+                arguments={"command": command, "timeout": timeout},
+                output={
+                    "command": command,
+                    "stdout": "",
+                    "stderr": f"Command not found: '{tokens[0]}'",
+                    "exit_code": 127,
+                    "sandbox_type": "isolated_process",
+                },
+                success=False,
+                error=f"Command not found: '{tokens[0]}'",
+            )
+
+        cmd_to_run = [executable] + tokens[1:]
         loop = asyncio.get_running_loop()
 
         def _exec() -> tuple[str, str, int]:
             try:
                 res = subprocess.run(
-                    command,
-                    shell=True,
+                    cmd_to_run,
+                    shell=False,
                     cwd=str(self._sandbox_dir),
                     env=clean_env,
                     capture_output=True,
@@ -255,6 +492,8 @@ class SandboxedTaskEnvironment(TaskEnvironment):
                 return res.stdout, res.stderr, res.returncode
             except subprocess.TimeoutExpired:
                 return "", f"Timeout after {timeout}s", -1
+            except Exception as ex:
+                return "", str(ex), -1
 
         try:
             stdout, stderr, code = await loop.run_in_executor(None, _exec)

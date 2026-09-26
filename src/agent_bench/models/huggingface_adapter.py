@@ -14,6 +14,10 @@ from typing import Any
 import structlog
 
 from agent_bench.core.adapters import ModelAdapter, ModelResponse
+from agent_bench.models.tool_formatter import (
+    extract_tool_calls_from_text,
+    inject_tools_into_messages,
+)
 
 logger = structlog.get_logger()
 
@@ -232,7 +236,10 @@ class HuggingFacePipelineAdapter(ModelAdapter):
         max_tokens: int = 4096,
         seed: int | None = None,
     ) -> ModelResponse:
-        prompt = self._format_prompt(messages)
+        messages_to_send = (
+            inject_tools_into_messages(messages, tools) if tools else messages
+        )
+        prompt = self._format_prompt(messages_to_send)
 
         response_text, tokens_in, tokens_out, latency_ms = await asyncio.to_thread(
             self._generate_sync, prompt, temperature, max_tokens, seed
@@ -245,8 +252,15 @@ class HuggingFacePipelineAdapter(ModelAdapter):
         if think_matches:
             thinking_content = "\n".join(think_matches)
 
+        # Extract tool calls from output text
+        clean_content = response_text
+        tool_calls: list[dict[str, Any]] = []
+        if tools:
+            clean_content, tool_calls = extract_tool_calls_from_text(response_text)
+
         return ModelResponse(
-            content=response_text,
+            content=clean_content,
+            tool_calls=tool_calls,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             latency_ms=latency_ms,

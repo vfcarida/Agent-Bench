@@ -112,4 +112,7 @@ class AnthropicModelAdapter(ModelAdapter):
         )
 
     async def close(self) -> None:
-        await self._client.aclose()
+        """Closes the underlying httpx AsyncClient."""
+        if hasattr(self, "_client") and not self._client.is_closed:
+            await self._client.aclose()
+

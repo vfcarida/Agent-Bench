@@ -31,10 +31,25 @@ def main() -> None:
 
     for filepath in sorted(yaml_files):
         rel_path = filepath.relative_to(gold_dir)
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             data = yaml.safe_load(f)
 
         if data is None:
+            continue
+
+        if isinstance(data, dict) and "items" in data and any(
+            isinstance(item, dict) and "ratings" in item for item in data.get("items", [])
+        ):
+            # Annotator agreement calibration dataset
+            try:
+                from agent_bench.metrics.inter_annotator import evaluate_annotation_dataset
+
+                report_agreement = evaluate_annotation_dataset(filepath)
+                total_cases += report_agreement["total_items"]
+            except Exception as e:
+                total_errors += 1
+                print(f"\n{rel_path}:")
+                print(f"  ERROR: Failed to validate annotator agreement file: {e}")
             continue
 
         cases: list[dict]
@@ -42,6 +57,8 @@ def main() -> None:
             cases = data
         elif isinstance(data, dict) and "cases" in data:
             cases = data["cases"]
+        elif isinstance(data, dict) and "tasks" in data:
+            cases = data["tasks"]
         else:
             cases = [data]
 
@@ -59,7 +76,7 @@ def main() -> None:
 
     # Final summary
     print(f"\n{'='*60}")
-    print(f"Gold Integrity Check Summary")
+    print("Gold Integrity Check Summary")
     print(f"  Files scanned: {len(yaml_files)}")
     print(f"  Total cases: {total_cases}")
     print(f"  Errors: {total_errors}")

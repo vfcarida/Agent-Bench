@@ -133,3 +133,152 @@ class EvalCase:
     severity: str = "medium"
     business_criticality: str = "operational"
     expected_refusal_mode: str = "none"
+
+    # ---------- Bidirectional Aliases for Schema Unification ----------
+
+    @property
+    def task_id(self) -> str:
+        """Alias for id matching Task schema."""
+        return self.id
+
+    @task_id.setter
+    def task_id(self, value: str) -> None:
+        self.id = value
+
+    @property
+    def prompt(self) -> str:
+        """Alias for prompt_or_user_goal matching Task schema."""
+        return self.prompt_or_user_goal
+
+    @property
+    def expected_final_state(self) -> dict[str, Any]:
+        """Alias for expected_state_changes matching Task schema."""
+        if self.expected_state_changes:
+            return self.expected_state_changes
+        if isinstance(self.expected_outcome, dict):
+            res = self.expected_outcome.get("state_changes", {})
+            if isinstance(res, dict):
+                return res
+        return {}
+
+    @property
+    def task_version(self) -> str:
+        """Alias for version matching Task schema."""
+        return self.version
+
+    @task_version.setter
+    def task_version(self, value: str) -> None:
+        self.version = value
+
+    # ---------- Canonical Factory & Serialization Methods ----------
+
+    def to_task(self) -> Any:
+        """Convert this EvalCase to a canonical Task instance."""
+        from agent_bench.core.scenarios import Task
+        return Task.from_eval_case(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert this EvalCase to a dictionary."""
+        import dataclasses
+        return dataclasses.asdict(self)
+
+    @classmethod
+    def from_task(cls, task: Any) -> "EvalCase":
+        """Instantiate an EvalCase from a Task object or dictionary."""
+        from agent_bench.core.scenarios import Task
+
+        if isinstance(task, dict):
+            task_obj = Task.from_dict(task)
+        elif isinstance(task, Task):
+            task_obj = task
+        else:
+            task_obj = Task.from_eval_case(task)
+
+        return cls(
+            id=task_obj.task_id,
+            family="transactional_tools",
+            domain=task_obj.domain,
+            prompt_or_user_goal=task_obj.prompt,
+            input_messages=task_obj.input_messages,
+            version=task_obj.task_version,
+            locale="pt-BR",
+            difficulty="medium",
+            risk_level=task_obj.risk_level,
+            source_type="human_gold",
+            split="dev",
+            initial_state=task_obj.initial_state,
+            allowed_tools=task_obj.allowed_tools,
+            forbidden_tools=[],
+            policy_refs=[],
+            knowledge_refs=task_obj.gold_references,
+            expected_outcome={
+                "state_changes": task_obj.expected_final_state,
+                "refusal_expected": task_obj.expected_refusal_mode.value != "none",
+            },
+            expected_state_changes=task_obj.expected_final_state,
+            required_tool_patterns=[{"tool": t} for t in task_obj.allowed_tools],
+            forbidden_tool_patterns=[],
+            evidence_requirements=task_obj.required_capabilities,
+            evidence_strings=task_obj.evidence_strings,
+            grading_strategy="state_based",
+            rubric={},
+            answer_format=task_obj.answer_format,
+            expected_deliverables=task_obj.expected_deliverables,
+            tags=task_obj.tags,
+            severity=task_obj.severity.value if hasattr(task_obj.severity, "value") else str(task_obj.severity),
+            business_criticality=(
+                task_obj.business_criticality.value
+                if hasattr(task_obj.business_criticality, "value")
+                else str(task_obj.business_criticality)
+            ),
+            expected_refusal_mode=(
+                task_obj.expected_refusal_mode.value
+                if hasattr(task_obj.expected_refusal_mode, "value")
+                else str(task_obj.expected_refusal_mode)
+            ),
+            metadata=dict(task_obj.metadata),
+        )
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "EvalCase":
+        """Instantiate an EvalCase from a dictionary with fallback handling."""
+        case_id = str(d.get("id") or d.get("task_id", ""))
+        input_msgs = d.get("input_messages", [])
+        prompt = d.get("prompt_or_user_goal") or d.get("prompt", "")
+        if not input_msgs and prompt:
+            input_msgs = [{"role": "user", "content": prompt}]
+
+        return cls(
+            id=case_id,
+            family=d.get("family", "transactional_tools"),
+            domain=d.get("domain", "default"),
+            prompt_or_user_goal=prompt,
+            input_messages=input_msgs,
+            version=d.get("version") or d.get("task_version", "1.0.0"),
+            locale=d.get("locale", "pt-BR"),
+            difficulty=d.get("difficulty", "medium"),
+            risk_level=d.get("risk_level") or d.get("severity", "medium"),
+            source_type=d.get("source_type", "human_gold"),
+            split=d.get("split", "dev"),
+            initial_state=d.get("initial_state", {}),
+            allowed_tools=d.get("allowed_tools", []),
+            forbidden_tools=d.get("forbidden_tools", []),
+            policy_refs=d.get("policy_refs", []),
+            knowledge_refs=d.get("knowledge_refs") or d.get("gold_references", []),
+            expected_outcome=d.get("expected_outcome", {}),
+            expected_state_changes=d.get("expected_state_changes") or d.get("expected_final_state", {}),
+            required_tool_patterns=d.get("required_tool_patterns", []),
+            forbidden_tool_patterns=d.get("forbidden_tool_patterns", []),
+            evidence_requirements=d.get("evidence_requirements") or d.get("required_capabilities", []),
+            evidence_strings=d.get("evidence_strings", []),
+            grading_strategy=d.get("grading_strategy", "state_based"),
+            rubric=d.get("rubric", {}),
+            answer_format=d.get("answer_format", "free_form"),
+            expected_deliverables=d.get("expected_deliverables", []),
+            metadata=d.get("metadata", {}),
+            tags=d.get("tags", []),
+            severity=d.get("severity") or d.get("risk_level", "medium"),
+            business_criticality=d.get("business_criticality", "operational"),
+            expected_refusal_mode=d.get("expected_refusal_mode", "none"),
+        )
+

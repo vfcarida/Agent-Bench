@@ -1,0 +1,61 @@
+name: Release & PyPI Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build and test without uploading to PyPI)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-publish:
+    name: Build Distribution & Publish to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Build and Test Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+          pip install -e ".[dev]"
+
+      - name: Run Quality Checks & Tests
+        run: |
+          ruff check src/ tests/
+          mypy src/agent_bench
+          pytest tests/unit/ -v -p no:deepeval
+          bench --config-dir configs validate-config
+          python scripts/check_gold_integrity.py
+
+      - name: Build Source Distribution and Wheel
+        run: |
+          python -m build
+
+      - name: Check Package Metadata and Long Description
+        run: |
+          twine check dist/*
+
+      - name: Publish to PyPI (Release tags only)
+        if: startsWith(github.ref, 'refs/tags/v') && (github.event.inputs.dry_run != 'true')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

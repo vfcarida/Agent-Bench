@@ -35,6 +35,7 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
    - `AgentRunner`: Executes agent reasoning independently of underlying frameworks (`DefaultAgentRunner`, `ScriptedAgentRunner`, or custom LLM loops).
    - `TaskEnvironment`: Sandboxes state management, tool execution, and environment lifecycle.
    - `Evaluator`: Handles scoring, assertion checks, and subjective evaluation.
+   - `UserSimulator`: Dynamically simulates conversational user personas, interactive clarifications, and slot-filling (`ScriptedUserSimulator`, `RuleBasedUserSimulator`, `ModelUserSimulator`).
 
 2. **Hard Safety Gating & Non-Compensable Evaluation (Robustness & Integrity):**
    - **Phase 0 (Hard Safety Gate):** Evaluates non-negotiable safety constraints (refusal requirements, forbidden state changes, disallowed tools). Any breach immediately forces `passed=False` with `safety_violation=True`. Hard safety failures can **never** be averaged away or compensated by quality, latency, or cost.
@@ -175,7 +176,7 @@ Operating Agent-Bench via CLI:
 bench --config-dir configs validate-config
 
 # 2. Run a benchmark suite (stub mode - no API keys required!)
-bench --config-dir configs run-suite pix_basic_v1
+bench --config-dir configs run-suite pix_basic_v1 --concurrency 4
 
 # 3. Run a specific task case
 bench --config-dir configs run-case PIX_001 --system tool_calling_reactive_gpt4 --domain pix_assist

@@ -8,7 +8,10 @@ version = "1.0.0"
 description = "Enterprise Agent Evaluation Benchmark: Multi-Domain Reliability, Non-Compensable Safety Gating & Real Telemetry"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-authors = []
+authors = [
+    { name = "Agent-Bench Maintainers", email = "maintainers@agentbench.dev" },
+]
+readme = "README.md"
 keywords = ["agent", "benchmark", "llm-evaluation", "safety-gate", "fintech", "pix", "reasoning-models", "tool-use", "rag"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -32,8 +35,11 @@ dependencies = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/agent-bench/agent-bench"
 Repository = "https://github.com/agent-bench/agent-bench"
 Documentation = "https://github.com/agent-bench/agent-bench/tree/main/docs"
+"Bug Tracker" = "https://github.com/agent-bench/agent-bench/issues"
+Changelog = "https://github.com/agent-bench/agent-bench/releases"
 
 [project.optional-dependencies]
 dev = [

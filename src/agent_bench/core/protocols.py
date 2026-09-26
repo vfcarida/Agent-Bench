@@ -61,6 +61,7 @@ class AgentRunner(Protocol):
         *,
         max_steps: int = 10,
         seed: int | None = None,
+        user_simulator: Any = None,
     ) -> tuple[dict[str, Any], list[TraceEvent]]:
         """Executes a task in the provided environment.
 
@@ -102,3 +103,9 @@ class Evaluator(Protocol):
             JudgeVerdict containing score, pass/fail status, and explanation.
         """
         ...
+
+
+# Re-export UserSimulator and UserTurn for Clean Architecture protocol access
+from agent_bench.core.user_simulator import UserSimulator, UserTurn  # noqa: E402
+
+__all__ = ["AgentRunner", "TaskEnvironment", "Evaluator", "UserSimulator", "UserTurn"]

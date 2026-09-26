@@ -12,6 +12,10 @@ from typing import Any
 import structlog
 
 from agent_bench.core.adapters import ModelAdapter, ModelResponse
+from agent_bench.models.tool_formatter import (
+    extract_tool_calls_from_text,
+    inject_tools_into_messages,
+)
 
 logger = structlog.get_logger()
 
@@ -127,7 +131,10 @@ class VLLMModelAdapter(ModelAdapter):
     ) -> ModelResponse:
         engine = await self._ensure_engine()
 
-        prompt = self._format_prompt(messages)
+        messages_to_send = (
+            inject_tools_into_messages(messages, tools) if tools else messages
+        )
+        prompt = self._format_prompt(messages_to_send)
 
         sampling_params = SamplingParams(
             temperature=temperature,
@@ -170,8 +177,15 @@ class VLLMModelAdapter(ModelAdapter):
         if think_matches:
             thinking_content = "\n".join(think_matches)
 
+        # Extract tool calls from output text
+        clean_content = full_output
+        tool_calls: list[dict[str, Any]] = []
+        if tools:
+            clean_content, tool_calls = extract_tool_calls_from_text(full_output)
+
         return ModelResponse(
-            content=full_output,
+            content=clean_content,
+            tool_calls=tool_calls,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             latency_ms=latency_ms,

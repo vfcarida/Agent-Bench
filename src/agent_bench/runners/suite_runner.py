@@ -1,5 +1,7 @@
 """Suite runner: executes all tasks in a benchmark suite."""
 
+import asyncio
+import contextlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -7,9 +9,10 @@ from typing import Any
 
 import structlog
 
-from agent_bench.core.artifacts import RunArtifact
+from agent_bench.core.artifacts import RunArtifact, TraceEvent
 from agent_bench.core.config import BenchConfig, SuiteConfig
 from agent_bench.core.protocols import AgentRunner
+from agent_bench.core.scenarios import Task
 from agent_bench.datasets.loader import load_domain_tasks
 from agent_bench.metrics.compute import compute_pass_hat_k, compute_pass_k
 from agent_bench.metrics.expanded import compute_bootstrap_ci
@@ -31,6 +34,7 @@ async def run_suite(
     agent_runner: AgentRunner | None = None,
     enable_llm_judge: bool = False,
     llm_judge_system_id: str | None = None,
+    concurrency: int = 1,
 ) -> RunArtifact:
     """Run all tasks in a suite, repeating N times for pass@k.
 
@@ -44,6 +48,7 @@ async def run_suite(
             Phase 2.  EXPERIMENTAL — only enable after a GO calibration verdict.
         llm_judge_system_id: System ID whose model is used as the judge.
             Required when enable_llm_judge is True.
+        concurrency: Maximum number of tasks to evaluate concurrently (default: 1).
     """
     collector = SpanCollector()
 
@@ -86,6 +91,7 @@ async def run_suite(
 
             # Build optional SemanticJudge for Phase 2
             suite_evaluator = None
+            judge_model = None
             if enable_llm_judge and llm_judge_system_id:
                 from agent_bench.core.adapters import JudgeAdapter
                 from agent_bench.graders.gated_evaluator import GatedEvaluator
@@ -114,94 +120,126 @@ async def run_suite(
                     judge_system=llm_judge_system_id,
                     judge_id=semantic_judge.judge_id,
                 )
-            with collector.trace("system_eval", system_id=system_id):
-                for task in all_tasks:
-                    repetition_results: list[bool] = []
-                    repetition_safety_violated: list[bool] = []
-                    repetition_latencies: list[float] = []
-                    repetition_tokens_in: list[int] = []
-                    repetition_tokens_out: list[int] = []
-                    repetition_costs: list[float] = []
+            try:
+                sem = asyncio.Semaphore(concurrency) if concurrency > 1 else None
 
-                    with collector.trace("task_eval", task_id=task.task_id, domain=task.domain):
-                        for i in range(suite_cfg.repeat_n):
-                            seed = (suite_cfg.seed or 0) + i if suite_cfg.seed is not None else None
-                            case_res = await execute_task(
-                                task, system_id, config, seed=seed,
-                                agent_runner=active_runner,
-                                evaluator=suite_evaluator,
-                            )
-                            repetition_results.append(case_res.passed)
-                            repetition_safety_violated.append(case_res.safety_violated)
-                            repetition_latencies.append(case_res.latency_ms)
-                            repetition_tokens_in.append(case_res.tokens_in)
-                            repetition_tokens_out.append(case_res.tokens_out)
-                            repetition_costs.append(case_res.cost_usd)
-                            artifact.traces.extend(case_res.traces)
+                async def _eval_single_task(
+                    task: Task,
+                ) -> tuple[dict[str, Any], list[dict[str, Any]], bool, list[TraceEvent]]:
+                    async with (sem if sem else contextlib.nullcontext()):
+                        repetition_results: list[bool] = []
+                        repetition_safety_violated: list[bool] = []
+                        repetition_latencies: list[float] = []
+                        repetition_tokens_in: list[int] = []
+                        repetition_tokens_out: list[int] = []
+                        repetition_costs: list[float] = []
+                        task_traces: list[TraceEvent] = []
 
-                    task_safety_violated = any(repetition_safety_violated)
-                    task_passed = any(repetition_results) and not task_safety_violated
-                    if task_passed:
-                        passed += 1
+                        with collector.trace("task_eval", task_id=task.task_id, domain=task.domain):
+                            for i in range(suite_cfg.repeat_n):
+                                seed = (suite_cfg.seed or 0) + i if suite_cfg.seed is not None else None
+                                case_res = await execute_task(
+                                    task,
+                                    system_id,
+                                    config,
+                                    seed=seed,
+                                    agent_runner=active_runner,
+                                    evaluator=suite_evaluator,
+                                )
+                                repetition_results.append(case_res.passed)
+                                repetition_safety_violated.append(case_res.safety_violated)
+                                repetition_latencies.append(case_res.latency_ms)
+                                repetition_tokens_in.append(case_res.tokens_in)
+                                repetition_tokens_out.append(case_res.tokens_out)
+                                repetition_costs.append(case_res.cost_usd)
+                                task_traces.extend(case_res.traces)
+
+                        task_safety_violated = any(repetition_safety_violated)
+                        task_passed = any(repetition_results) and not task_safety_violated
+
+                        n_reps = len(repetition_results)
+                        mean_latency = sum(repetition_latencies) / n_reps if n_reps else 0.0
+                        mean_tokens_in = round(sum(repetition_tokens_in) / n_reps) if n_reps else 0
+                        mean_tokens_out = round(sum(repetition_tokens_out) / n_reps) if n_reps else 0
+                        total_task_cost = sum(repetition_costs)
+
+                        task_result: dict[str, Any] = {
+                            "task_id": task.task_id,
+                            "domain": task.domain,
+                            "passed": task_passed,
+                            "policy_violated": task_safety_violated,
+                            "safety_violation": task_safety_violated,
+                            "latency_ms": mean_latency,
+                            "latencies_ms": repetition_latencies,
+                            "tokens_in": mean_tokens_in,
+                            "tokens_out": mean_tokens_out,
+                            "cost_usd": total_task_cost,
+                            "repetitions": repetition_results,
+                        }
+
+                        records: list[dict[str, Any]] = [
+                            {
+                                "run_id": artifact.run_id,
+                                "system_id": system_id,
+                                "task_id": task.task_id,
+                                "domain": task.domain,
+                                "metric_name": "task_success",
+                                "metric_value": 1.0 if task_passed else 0.0,
+                                "metric_category": "functional",
+                                "passed": task_passed,
+                                "timestamp": datetime.now(UTC).isoformat(),
+                            },
+                            {
+                                "run_id": artifact.run_id,
+                                "system_id": system_id,
+                                "task_id": task.task_id,
+                                "domain": task.domain,
+                                "metric_name": "latency_ms",
+                                "metric_value": mean_latency,
+                                "metric_category": "latency",
+                                "passed": task_passed,
+                                "timestamp": datetime.now(UTC).isoformat(),
+                            },
+                            {
+                                "run_id": artifact.run_id,
+                                "system_id": system_id,
+                                "task_id": task.task_id,
+                                "domain": task.domain,
+                                "metric_name": "cost_usd",
+                                "metric_value": total_task_cost,
+                                "metric_category": "cost",
+                                "passed": task_passed,
+                                "timestamp": datetime.now(UTC).isoformat(),
+                            },
+                        ]
+                        return task_result, records, task_passed, task_traces
+
+                with collector.trace("system_eval", system_id=system_id):
+                    if concurrency > 1:
+                        eval_results = await asyncio.gather(
+                            *[_eval_single_task(task) for task in all_tasks]
+                        )
                     else:
-                        failed += 1
+                        eval_results = [
+                            await _eval_single_task(task) for task in all_tasks
+                        ]
 
-                    n_reps = len(repetition_results)
-                    mean_latency = sum(repetition_latencies) / n_reps if n_reps else 0.0
-                    mean_tokens_in = round(sum(repetition_tokens_in) / n_reps) if n_reps else 0
-                    mean_tokens_out = round(sum(repetition_tokens_out) / n_reps) if n_reps else 0
-                    total_task_cost = sum(repetition_costs)
+                    for task_result, records, task_passed, task_traces in eval_results:
+                        if task_passed:
+                            passed += 1
+                        else:
+                            failed += 1
+                        system_results.append(task_result)
+                        all_metric_records.extend(records)
+                        artifact.traces.extend(task_traces)
 
-                    task_result = {
-                        "task_id": task.task_id,
-                        "domain": task.domain,
-                        "passed": task_passed,
-                        "policy_violated": task_safety_violated,
-                        "safety_violation": task_safety_violated,
-                        "latency_ms": mean_latency,
-                        "latencies_ms": repetition_latencies,
-                        "tokens_in": mean_tokens_in,
-                        "tokens_out": mean_tokens_out,
-                        "cost_usd": total_task_cost,
-                        "repetitions": repetition_results,
-                    }
-                    system_results.append(task_result)
-
-                    # Metric records
-                    all_metric_records.append({
-                        "run_id": artifact.run_id,
-                        "system_id": system_id,
-                        "task_id": task.task_id,
-                        "domain": task.domain,
-                        "metric_name": "task_success",
-                        "metric_value": 1.0 if task_passed else 0.0,
-                        "metric_category": "functional",
-                        "passed": task_passed,
-                        "timestamp": datetime.now(UTC).isoformat(),
-                    })
-                    all_metric_records.append({
-                        "run_id": artifact.run_id,
-                        "system_id": system_id,
-                        "task_id": task.task_id,
-                        "domain": task.domain,
-                        "metric_name": "latency_ms",
-                        "metric_value": mean_latency,
-                        "metric_category": "latency",
-                        "passed": task_passed,
-                        "timestamp": datetime.now(UTC).isoformat(),
-                    })
-                    all_metric_records.append({
-                        "run_id": artifact.run_id,
-                        "system_id": system_id,
-                        "task_id": task.task_id,
-                        "domain": task.domain,
-                        "metric_name": "cost_usd",
-                        "metric_value": total_task_cost,
-                        "metric_category": "cost",
-                        "passed": task_passed,
-                        "timestamp": datetime.now(UTC).isoformat(),
-                    })
-
+            finally:
+                if hasattr(active_runner, "close"):
+                    await active_runner.close()
+                elif hasattr(active_runner, "_model") and active_runner._model is not None and hasattr(active_runner._model, "close"):
+                    await active_runner._model.close()
+                if judge_model is not None and hasattr(judge_model, "close"):
+                    await judge_model.close()
             all_task_results[system_id] = system_results
 
             # Compute per-task pass@k and pass^k per system per domain (unpooled aggregation)
