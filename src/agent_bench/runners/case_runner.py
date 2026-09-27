@@ -577,6 +577,7 @@ async def run_single_case(
     config: BenchConfig,
     output_dir: Path,
     split: str = "dev",
+    user_simulator: UserSimulator | None = None,
 ) -> bool:
     """Run a single case by task_id lookup."""
     tasks = load_domain_tasks(domain, split=split)
@@ -587,5 +588,11 @@ async def run_single_case(
     from agent_bench.models.factory import build_agent_runner
 
     runner = build_agent_runner(system_id, config)
-    case_res = await execute_task(task, system_id, config, agent_runner=runner)
+    case_res = await execute_task(
+        task,
+        system_id,
+        config,
+        agent_runner=runner,
+        user_simulator=user_simulator,
+    )
     return case_res.passed

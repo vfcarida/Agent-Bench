@@ -88,6 +88,7 @@ All model adapters subclass [`ModelAdapter`](file:///c:/Users/vinicius/Documents
 - `SuiteRunner`: Executes full benchmark suites with bounded async concurrency (`--concurrency`), Wald's SPRT early stopping (`--sprt`), multi-turn user simulation (`--user-simulator`), bootstrap confidence intervals, and scorecard persistence.
 - `CallableAgentRunner`: Universal bridge enabling LangChain, CrewAI, LangGraph, or custom Python agent functions to plug into Agent-Bench.
 - `ScriptedAgentRunner`: Baseline deterministic rule engine for sanity checks.
+- `UserSimulator` Protocol: Multi-turn conversational user driver with `ScriptedUserSimulator`, `RuleBasedUserSimulator`, `LLMUserSimulator`, and interactive `HumanUserSimulator` for live terminal red-teaming.
 
 ---
 

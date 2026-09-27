@@ -6,7 +6,7 @@ agent benchmarks.
 """
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
@@ -259,3 +259,50 @@ class ModelUserSimulator:
                 text = "Thank you, that's all."
 
         return UserTurn(content=text, finished=finished)
+
+
+class HumanUserSimulator:
+    """Interactive human-in-the-loop simulator for manual probing and red-teaming.
+
+    Prompts a human evaluator via the console/terminal during each step of the dialogue,
+    allowing live probing of agent guardrails, boundaries, and multi-turn capabilities.
+    """
+
+    def __init__(
+        self,
+        prompt_prefix: str = "[User]> ",
+        input_fn: Callable[[str], str] | None = None,
+        output_fn: Callable[[str], None] | None = None,
+        simulator_id: str = "human",
+    ) -> None:
+        self._prompt_prefix = prompt_prefix
+        self._input_fn = input_fn or input
+        self._output_fn = output_fn or print
+        self._simulator_id = simulator_id
+        self._turn_count = 0
+
+    @property
+    def simulator_id(self) -> str:
+        return self._simulator_id
+
+    def reset(self, task: Task | None = None) -> None:
+        self._turn_count = 0
+
+    async def step(
+        self,
+        agent_message: str,
+        history: Sequence[dict[str, Any]],
+        task: Task,
+    ) -> UserTurn:
+        self._turn_count += 1
+        self._output_fn(f"\n[Agent]: {agent_message}")
+        try:
+            user_input = self._input_fn(self._prompt_prefix).strip()
+        except (EOFError, KeyboardInterrupt):
+            return UserTurn(content="", finished=True)
+
+        if user_input.lower() in ("/exit", "/quit", "/done", "/finish"):
+            return UserTurn(content="", finished=True)
+
+        return UserTurn(content=user_input, finished=False)
+

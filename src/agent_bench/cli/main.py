@@ -107,7 +107,7 @@ def validate_datasets(fixtures_dir: str) -> None:
 @click.option(
     "--user-simulator",
     "user_sim_type",
-    type=click.Choice(["none", "scripted", "rule_based"]),
+    type=click.Choice(["none", "scripted", "rule_based", "human"]),
     default="none",
     help="Attach interactive user simulator for multi-turn conversational benchmark tasks.",
 )
@@ -154,10 +154,16 @@ def run_suite(
     user_simulator: UserSimulator | None = None
     if user_sim_type == "scripted":
         from agent_bench.core.user_simulator import ScriptedUserSimulator
+
         user_simulator = ScriptedUserSimulator()
     elif user_sim_type == "rule_based":
         from agent_bench.core.user_simulator import RuleBasedUserSimulator
+
         user_simulator = RuleBasedUserSimulator()
+    elif user_sim_type == "human":
+        from agent_bench.core.user_simulator import HumanUserSimulator
+
+        user_simulator = HumanUserSimulator()
 
     try:
         artifact = asyncio.run(
@@ -192,18 +198,55 @@ def run_suite(
 @click.option("--domain", required=True, help="Domain ID")
 @click.option("--split", default="dev", help="Dataset split (e.g., dev, holdout, calibration)")
 @click.option("--output-dir", default="data/runs", type=click.Path())
+@click.option(
+    "--user-simulator",
+    "user_sim_type",
+    type=click.Choice(["none", "scripted", "rule_based", "human"]),
+    default="none",
+    help="Attach interactive user simulator (human for terminal red-teaming).",
+)
 @click.pass_context
 def run_case(
-    ctx: click.Context, task_id: str, system: str, domain: str, split: str, output_dir: str
+    ctx: click.Context,
+    task_id: str,
+    system: str,
+    domain: str,
+    split: str,
+    output_dir: str,
+    user_sim_type: str,
 ) -> None:
     """Run a single benchmark case."""
+    from agent_bench.core.user_simulator import (
+        HumanUserSimulator,
+        RuleBasedUserSimulator,
+        ScriptedUserSimulator,
+        UserSimulator,
+    )
     from agent_bench.models.factory import ConfigError
     from agent_bench.runners.case_runner import run_single_case
+
+    user_simulator: UserSimulator | None = None
+    if user_sim_type == "scripted":
+        user_simulator = ScriptedUserSimulator()
+    elif user_sim_type == "rule_based":
+        user_simulator = RuleBasedUserSimulator()
+    elif user_sim_type == "human":
+        user_simulator = HumanUserSimulator()
 
     config_dir = ctx.obj["config_dir"]
     config = load_config(config_dir)
     try:
-        result = asyncio.run(run_single_case(task_id, system, domain, config, Path(output_dir), split=split))
+        result = asyncio.run(
+            run_single_case(
+                task_id,
+                system,
+                domain,
+                config,
+                Path(output_dir),
+                split=split,
+                user_simulator=user_simulator,
+            )
+        )
     except ConfigError as e:
         console.print(f"[red]Config error: {e}[/red]")
         raise SystemExit(1)
@@ -648,6 +691,36 @@ def check_agreement(annotations: str) -> None:
         table.add_row(pair, f"{score:.4f}", interpret_agreement(score))
 
     console.print(table)
+
+
+@cli.command()
+@click.option("--count", default=20, type=int, help="Number of security cases to generate.")
+@click.option("--domain", default=None, help="Target domain (e.g. cyber_sandbox, investment_advisor, pix_assist).")
+@click.option("--lang", default="auto", type=click.Choice(["auto", "en", "pt"]), help="Target prompt language.")
+@click.option("--output", "-o", default="datasets/synthetic/security_generated.yaml", type=click.Path(), help="Output YAML file path.")
+@click.option("--seed", default=42, type=int, help="Random generation seed.")
+def generate_security_suite(
+    count: int,
+    domain: str | None,
+    lang: str,
+    output: str,
+    seed: int,
+) -> None:
+    """Generate a batch of adversarial security test cases aligned with OWASP Top 10."""
+    import yaml
+
+    from agent_bench.generators.security import SecurityGenerator
+
+    generator = SecurityGenerator()
+    results = generator.generate_batch(count=count, domain=domain, lang=lang, seed=seed)
+    valid_cases = [r.case for r in results if not r.rejected]
+
+    out_p = Path(output)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_p, "w", encoding="utf-8") as f:
+        yaml.dump({"cases": valid_cases}, f, sort_keys=False, allow_unicode=True)
+
+    console.print(f"[green]Generated {len(valid_cases)} adversarial test cases saved to {out_p}[/green]")
 
 
 if __name__ == "__main__":

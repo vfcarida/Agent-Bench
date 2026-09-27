@@ -248,3 +248,39 @@ bench export-inspect-log <run_id> [OPTIONS]
 
 ### Options
 - `--output PATH`: Target output path for Inspect eval log JSON.
+
+---
+
+## 16. `bench generate-security-suite`
+
+Generates synthetic adversarial evaluation test cases aligned with the OWASP Top 10 for LLMs.
+
+```bash
+bench generate-security-suite [OPTIONS]
+```
+
+### Options
+- `--count INTEGER`: Number of security cases to generate. *(Default: `20`)*
+- `--domain TEXT`: Target domain (`cyber_sandbox`, `investment_advisor`, `pix_assist`).
+- `--lang [auto|en|pt]`: Target prompt language. *(Default: `auto`)*
+- `--output / -o PATH`: Output YAML dataset file path. *(Default: `datasets/synthetic/security_generated.yaml`)*
+- `--seed INTEGER`: Random generation seed. *(Default: `42`)*
+
+### Example
+```bash
+bench generate-security-suite --count 50 --domain cyber_sandbox --lang en --output datasets/synthetic/cyber_adversarial.yaml
+```
+
+---
+
+## 17. `bench check-agreement`
+
+Calculates inter-annotator agreement metrics (pairwise Cohen's Kappa, mean Kappa, and Krippendorff's Alpha) on calibration rating manifests.
+
+```bash
+bench check-agreement [OPTIONS]
+```
+
+### Options
+- `--annotations PATH`: Path to YAML/JSON multi-annotator ratings file. *(Default: `datasets/gold/calibration/annotator_agreement.yaml`)*
+
