@@ -56,7 +56,8 @@ peft = ["peft>=0.9", "transformers>=4.38", "torch>=2.1"]
 vllm = ["vllm>=0.4", "torch>=2.1"]
 gpu = ["vllm>=0.4", "torch>=2.1"]
 athena = ["transformers>=4.38", "torch>=2.1", "peft>=0.9", "accelerate>=0.27"]
-all = ["agent-bench[openai,anthropic,huggingface,peft]"]
+inspect = ["inspect-ai>=0.3.0"]
+all = ["agent-bench[openai,anthropic,huggingface,peft,inspect]"]
 all-gpu = ["agent-bench[all,vllm]"]
 
 [project.scripts]
@@ -89,5 +90,7 @@ module = [
     "pyarrow.*",
     "vllm",
     "vllm.*",
+    "inspect_ai",
+    "inspect_ai.*",
 ]
 ignore_missing_imports = true

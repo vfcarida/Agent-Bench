@@ -96,6 +96,21 @@ def validate_datasets(fixtures_dir: str) -> None:
     type=int,
     help="Maximum concurrent tasks to evaluate simultaneously (default: 1).",
 )
+@click.option(
+    "--sprt",
+    "--early-stopping",
+    "enable_sprt",
+    is_flag=True,
+    default=False,
+    help="Enable Wald's Sequential Probability Ratio Test for early stopping on conclusive task outcomes.",
+)
+@click.option(
+    "--user-simulator",
+    "user_sim_type",
+    type=click.Choice(["none", "scripted", "rule_based"]),
+    default="none",
+    help="Attach interactive user simulator for multi-turn conversational benchmark tasks.",
+)
 @click.pass_context
 def run_suite(
     ctx: click.Context,
@@ -108,6 +123,8 @@ def run_suite(
     enable_llm_judge: bool,
     llm_judge_system: str | None,
     concurrency: int,
+    enable_sprt: bool,
+    user_sim_type: str,
 ) -> None:
     """Run a complete benchmark suite."""
     from agent_bench.runners.suite_runner import run_suite as _run_suite
@@ -132,6 +149,16 @@ def run_suite(
         console.print("[red]--enable-llm-judge requires --llm-judge-system to be specified.[/red]")
         raise SystemExit(1)
 
+    from agent_bench.core.user_simulator import UserSimulator
+
+    user_simulator: UserSimulator | None = None
+    if user_sim_type == "scripted":
+        from agent_bench.core.user_simulator import ScriptedUserSimulator
+        user_simulator = ScriptedUserSimulator()
+    elif user_sim_type == "rule_based":
+        from agent_bench.core.user_simulator import RuleBasedUserSimulator
+        user_simulator = RuleBasedUserSimulator()
+
     try:
         artifact = asyncio.run(
             _run_suite(
@@ -142,6 +169,8 @@ def run_suite(
                 enable_llm_judge=enable_llm_judge,
                 llm_judge_system_id=llm_judge_system,
                 concurrency=concurrency,
+                user_simulator=user_simulator,
+                enable_sprt=enable_sprt,
             )
         )
     except ConfigError as e:

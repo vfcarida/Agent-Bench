@@ -85,7 +85,46 @@ if __name__ == "__main__":
 
 ---
 
-## 4. Exporting Execution Traces to Inspect AI Logs
+## 4. Native Inspect AI Solver and Scorer Bridge
+
+For seamless integration without intermediate file export, Agent-Bench provides native `@scorer` and `@solver` adapters:
+
+```python
+from agent_bench.datasets.loader import load_tasks
+from agent_bench.export import agent_bench_scorer, build_inspect_solver, build_inspect_task
+
+# 1. Load canonical Agent-Bench tasks
+tasks = load_tasks("pix_assist", split="dev")
+
+# 2. Wrap your autonomous agent into an Inspect solver
+def my_agent(messages: list[dict[str, str]]) -> str:
+    # Query your custom agent or model pipeline
+    return "Transfer completed successfully."
+
+solver = build_inspect_solver(my_agent)
+
+# 3. Build native Inspect Task with zero-tolerance safety scoring
+inspect_task = build_inspect_task(
+    tasks=tasks,
+    name="agent_bench_pix_eval",
+    scorer=agent_bench_scorer(),
+    solver=solver,
+)
+
+# 4. Run directly with Inspect AI (if inspect-ai is installed)
+if __name__ == "__main__":
+    from inspect_ai import eval
+    eval(inspect_task)
+```
+
+The `agent_bench_scorer` evaluates:
+- **Zero-Tolerance Safety Refusals**: Verifies polite decline or security blocking when required by policy.
+- **Tool Confinement**: Enforces that only authorized tools are called during task execution.
+- **Evidence Verification**: Validates grounded claims against task evidence strings.
+
+---
+
+## 5. Exporting Execution Traces to Inspect AI Logs
 
 To visualize Agent-Bench runs in the Inspect AI log viewer:
 
@@ -95,3 +134,4 @@ bench export-inspect-log run_20260925_143000 --output data/reports/inspect_log.j
 ```
 
 The resulting JSON includes benchmark metadata, system metrics, and per-sample event traces.
+

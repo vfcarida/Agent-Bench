@@ -13,9 +13,10 @@ from agent_bench.core.artifacts import RunArtifact, TraceEvent
 from agent_bench.core.config import BenchConfig, SuiteConfig
 from agent_bench.core.protocols import AgentRunner
 from agent_bench.core.scenarios import Task
+from agent_bench.core.user_simulator import UserSimulator
 from agent_bench.datasets.loader import load_domain_tasks
 from agent_bench.metrics.compute import compute_pass_hat_k, compute_pass_k
-from agent_bench.metrics.expanded import compute_bootstrap_ci
+from agent_bench.metrics.expanded import SPRTDecision, compute_bootstrap_ci, evaluate_wald_sprt
 from agent_bench.metrics.scorecard import compute_scorecard
 from agent_bench.runners.case_runner import DefaultAgentRunner, execute_task
 from agent_bench.runners.scripted import ScriptedAgentRunner
@@ -35,6 +36,12 @@ async def run_suite(
     enable_llm_judge: bool = False,
     llm_judge_system_id: str | None = None,
     concurrency: int = 1,
+    user_simulator: UserSimulator | None = None,
+    enable_sprt: bool = False,
+    sprt_p0: float = 0.50,
+    sprt_p1: float = 0.80,
+    sprt_alpha: float = 0.05,
+    sprt_beta: float = 0.10,
 ) -> RunArtifact:
     """Run all tasks in a suite, repeating N times for pass@k.
 
@@ -45,10 +52,16 @@ async def run_suite(
         runner_type: One of ``auto`` / ``scripted`` / ``stub``.
         agent_runner: Optionally injected runner (overrides runner_type).
         enable_llm_judge: When True, adds SemanticJudge to GatedEvaluator
-            Phase 2.  EXPERIMENTAL — only enable after a GO calibration verdict.
+            Phase 2. EXPERIMENTAL — only enable after a GO calibration verdict.
         llm_judge_system_id: System ID whose model is used as the judge.
             Required when enable_llm_judge is True.
         concurrency: Maximum number of tasks to evaluate concurrently (default: 1).
+        user_simulator: Optional UserSimulator driving multi-turn interactive dialogue.
+        enable_sprt: Enable Wald's Sequential Probability Ratio Test for early stopping.
+        sprt_p0: Baseline pass rate hypothesis for SPRT.
+        sprt_p1: Target pass rate hypothesis for SPRT.
+        sprt_alpha: Type I error bound (false positive rate).
+        sprt_beta: Type II error bound (false negative rate).
     """
     collector = SpanCollector()
 
@@ -136,6 +149,7 @@ async def run_suite(
                         task_traces: list[TraceEvent] = []
 
                         with collector.trace("task_eval", task_id=task.task_id, domain=task.domain):
+                            sprt_decision = "completed"
                             for i in range(suite_cfg.repeat_n):
                                 seed = (suite_cfg.seed or 0) + i if suite_cfg.seed is not None else None
                                 case_res = await execute_task(
@@ -145,6 +159,7 @@ async def run_suite(
                                     seed=seed,
                                     agent_runner=active_runner,
                                     evaluator=suite_evaluator,
+                                    user_simulator=user_simulator,
                                 )
                                 repetition_results.append(case_res.passed)
                                 repetition_safety_violated.append(case_res.safety_violated)
@@ -153,6 +168,25 @@ async def run_suite(
                                 repetition_tokens_out.append(case_res.tokens_out)
                                 repetition_costs.append(case_res.cost_usd)
                                 task_traces.extend(case_res.traces)
+
+                                # Early stopping on zero-tolerance hard safety violation
+                                if case_res.safety_violated:
+                                    sprt_decision = "safety_violation_stop"
+                                    break
+
+                                # Early stopping via Wald's Sequential Probability Ratio Test (SPRT)
+                                if enable_sprt and len(repetition_results) >= 3:
+                                    decision, _ = evaluate_wald_sprt(
+                                        sum(repetition_results),
+                                        len(repetition_results),
+                                        p0=sprt_p0,
+                                        p1=sprt_p1,
+                                        alpha=sprt_alpha,
+                                        beta=sprt_beta,
+                                    )
+                                    if decision in (SPRTDecision.ACCEPT_H1, SPRTDecision.REJECT_H1):
+                                        sprt_decision = decision.value
+                                        break
 
                         task_safety_violated = any(repetition_safety_violated)
                         task_passed = any(repetition_results) and not task_safety_violated
@@ -175,6 +209,9 @@ async def run_suite(
                             "tokens_out": mean_tokens_out,
                             "cost_usd": total_task_cost,
                             "repetitions": repetition_results,
+                            "sprt_decision": sprt_decision,
+                            "repetitions_executed": n_reps,
+                            "repetitions_configured": suite_cfg.repeat_n,
                         }
 
                         records: list[dict[str, Any]] = [
@@ -333,8 +370,16 @@ async def run_suite(
                     "sampling_denominator": "all_trials_including_failures_timeouts",
                 })
 
+        flat_task_results = []
+        for sys_id, results in all_task_results.items():
+            for r in results:
+                r_copy = dict(r)
+                r_copy["system_id"] = sys_id
+                flat_task_results.append(r_copy)
+
         artifact.metrics["scorecards"] = scorecards
         artifact.metrics["pass_k"] = pass_k_results
+        artifact.metrics["task_results"] = flat_task_results
         artifact.finalize()
         suite_span.set_attribute("tasks_passed", passed)
         suite_span.set_attribute("tasks_failed", failed)

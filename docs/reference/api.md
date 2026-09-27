@@ -85,7 +85,7 @@ All model adapters subclass [`ModelAdapter`](file:///c:/Users/vinicius/Documents
 ## 3. Runners (`agent_bench.runners`)
 
 - `CaseRunner`: Executes a single evaluation case or task.
-- `SuiteRunner`: Executes full benchmark suites with bounded async concurrency (`--concurrency`), bootstrap confidence intervals, and scorecard persistence.
+- `SuiteRunner`: Executes full benchmark suites with bounded async concurrency (`--concurrency`), Wald's SPRT early stopping (`--sprt`), multi-turn user simulation (`--user-simulator`), bootstrap confidence intervals, and scorecard persistence.
 - `CallableAgentRunner`: Universal bridge enabling LangChain, CrewAI, LangGraph, or custom Python agent functions to plug into Agent-Bench.
 - `ScriptedAgentRunner`: Baseline deterministic rule engine for sanity checks.
 
@@ -102,9 +102,32 @@ All model adapters subclass [`ModelAdapter`](file:///c:/Users/vinicius/Documents
 
 ---
 
-## 5. Metrics (`agent_bench.metrics`)
+## 5. Metrics & Statistical Inference (`agent_bench.metrics`)
 
 - `compute_pass_hat_k(results, k)`: Unbiased per-task $\text{Pass}@k$ combinatorial estimator.
 - `compute_pass_k(results, k)`: High-risk $\text{Pass}^k$ metric measuring consistent success across all $k$ trials.
 - `compute_bootstrap_ci(values, n_resamples=1000)`: Non-parametric 95% bootstrap confidence intervals.
+- `compute_wilson_score_interval(successes, total, confidence=0.95)`: Asymmetric exact binomial Wilson score confidence interval.
+- `evaluate_wald_sprt(successes, total, p0=0.85, p1=0.95, alpha=0.05, beta=0.05)`: Wald's Sequential Probability Ratio Test for cost-optimal early stopping.
 - `compute_scorecard(...)`: Multi-dimensional reliability report across functional, safety, latency, and cost axes.
+
+---
+
+## 6. Export Bridges (`agent_bench.export`)
+
+- `task_to_inspect_sample(task)`: Converts an Agent-Bench `Task` into an Inspect AI chat `Sample`.
+- `export_tasks_to_inspect_dataset(tasks, output_path)`: Exports benchmark tasks into an Inspect AI `.jsonl` dataset.
+- `run_artifact_to_inspect_log(artifact)`: Translates execution artifacts and traces into Inspect AI evaluation log JSON.
+- `agent_bench_scorer()`: Native Inspect `@scorer` adapter validating zero-tolerance refusals, tool confines, and evidence.
+- `build_inspect_solver(agent_fn)`: Wraps an arbitrary Python agent function into an Inspect AI `@solver`.
+- `build_inspect_task(tasks, name, scorer, solver)`: Constructs an Inspect `Task` ready for `inspect eval`.
+- `grade_agent_bench_inspect_sample(metadata, output_text, tool_calls)`: Standalone sample grader returning `InspectBridgeScore`.
+
+---
+
+## 7. Synthetic Generators (`agent_bench.generators`)
+
+- `SecurityGenerator`: Generates multilingual adversarial red-teaming vectors (prompt injection, privilege escalation, data exfiltration, unsafe autonomy) aligned with OWASP Top 10 for LLMs.
+- `BusinessHorizonGenerator`: Generates enterprise multi-horizon transactional scenarios.
+- `KnowledgeRAGGenerator`: Generates retrieval-augmented grounding and factuality challenge tasks.
+

@@ -44,6 +44,8 @@ bench run-suite <suite_id> [OPTIONS]
 - `--seed INTEGER`: Random seed for reproducibility.
 - `--enable-llm-judge`: Enable Phase 2 subjective LLM judge evaluation.
 - `--judge-model TEXT`: Model ID for LLM judge.
+- `--sprt / --early-stopping`: Enable Wald's Sequential Probability Ratio Test for early stopping on conclusive task repetitions.
+- `--user-simulator [none|scripted|rule_based]`: Attach interactive user simulator for multi-turn conversational evaluation.
 
 ### Example
 ```bash

@@ -1,6 +1,6 @@
 # Como Adicionar um Domínio (Arquivo Histórico pt-BR)
 
-> **Nota**: Este documento foi arquivado para preservação histórica. Para a documentação oficial e atualizada em inglês, consulte [`docs/how_to_add_a_domain.md`](../how_to_add_a_domain.md).
+> **Nota**: Este documento foi arquivado para preservação histórica. Para a documentação oficial e atualizada em inglês, consulte [`docs/how_to_add_a_domain.md`](../../how_to_add_a_domain.md).
 
 ## Visão Geral
 

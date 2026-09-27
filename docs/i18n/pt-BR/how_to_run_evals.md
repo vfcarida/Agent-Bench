@@ -1,6 +1,6 @@
 # Como Executar Avaliações (Arquivo Histórico pt-BR)
 
-> **Nota**: Este documento foi arquivado para preservação histórica. Para a documentação oficial e atualizada da CLI do Agent-Bench, consulte [`docs/how_to_run_evals.md`](../how_to_run_evals.md).
+> **Nota**: Este documento foi arquivado para preservação histórica. Para a documentação oficial e atualizada da CLI do Agent-Bench, consulte [`docs/how_to_run_evals.md`](../../how_to_run_evals.md).
 
 ## Execução Local
 

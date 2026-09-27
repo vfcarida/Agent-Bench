@@ -58,7 +58,7 @@ bench --config-dir configs run-suite pix_basic_v1 \
   --llm-judge-system prompt_only_gpt4
 ```
 
-> **Note**: `--enable-llm-judge` requires passing the calibration gate experiment first. See [`docs/llm_judge_calibration_report.md`](llm_judge_calibration_report.md).
+> **Note**: `--enable-llm-judge` requires passing the calibration gate experiment first. See [Inter-Annotator & Calibration Guide](methodology/inter-annotator.md).
 
 ---
 
