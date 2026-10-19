@@ -34,11 +34,11 @@ test:
 	pytest tests/ -v -p no:deepeval
 
 lint:
-	ruff check src/ tests/
+	ruff check src/ tests/ scripts/
 
 format:
-	ruff format src/ tests/
-	ruff check --fix src/ tests/
+	ruff format src/ tests/ scripts/
+	ruff check --fix src/ tests/ scripts/
 
 typecheck:
 	mypy src/agent_bench

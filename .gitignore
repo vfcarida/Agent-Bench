@@ -15,3 +15,7 @@ data/governance/
 venv/
 site/
 .deepeval/
+.DS_Store
+.coverage
+.mypy_cache/
+.ruff_cache/

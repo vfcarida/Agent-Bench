@@ -173,21 +173,22 @@ def _classify_degradation_pattern(
 
     delta_values = [v for _, v in valid_deltas]
 
-    # All deltas positive and significant → monotonic degradation
-    if all(d > 0.02 for d in delta_values):
-        return "monotonic_degradation"
-
     # All deltas small → robust
     if all(abs(d) < 0.05 for d in delta_values):
         return "robust"
 
-    # One delta much larger than others → cliff
-    if max(delta_values) > 3 * _mean_positive(delta_values):
-        return "cliff"
-
     # Mixed positive and negative → non-monotonic
     if any(d < -0.02 for d in delta_values):
         return "non_monotonic"
+
+    # One delta much larger than others → cliff (single drop >= 0.35 and > 1.8x mean drop)
+    mean_drop = sum(max(0.0, d) for d in delta_values) / len(delta_values)
+    if max(delta_values) >= 0.35 and max(delta_values) > 1.8 * mean_drop:
+        return "cliff"
+
+    # All deltas positive and significant → monotonic degradation
+    if all(d > 0.02 for d in delta_values):
+        return "monotonic_degradation"
 
     return "gradual_degradation"
 

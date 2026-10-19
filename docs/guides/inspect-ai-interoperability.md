@@ -8,7 +8,7 @@ This guide details how to export and evaluate **Agent-Bench** benchmark tasks an
 
 [Inspect AI](https://inspect.ai-safety-institute.org.uk/) is a standard declarative evaluation framework adopted by governmental AI safety institutes (UK AISI, US AISI).
 
-Agent-Bench includes a native bidirectional bridge module located at [`src/agent_bench/export/inspect_ai.py`](file:///src/agent_bench/export/inspect_ai.py) that provides:
+Agent-Bench includes a native bidirectional bridge module located at [`src/agent_bench/export/inspect_ai.py`](../../src/agent_bench/export/inspect_ai.py) that provides:
 1. **Dataset Export**: Converts Agent-Bench canonical gold tasks into Inspect AI `Sample` records with message roles, sandbox specifications, and compliance metadata.
 2. **Execution Log Export**: Translates Agent-Bench execution traces into Inspect AI compatible evaluation logs.
 

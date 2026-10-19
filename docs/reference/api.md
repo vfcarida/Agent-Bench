@@ -71,7 +71,7 @@ class CustomEvaluator(Evaluator):
 
 ## 2. Model Adapters (`agent_bench.models`)
 
-All model adapters subclass [`ModelAdapter`](file:///c:/Users/vinicius/Documents/GeminiCodes/Agent-Bench/src/agent_bench/core/adapters.py) and provide consistent `generate()` signatures with token and latency accounting.
+All model adapters subclass [`ModelAdapter`](../../src/agent_bench/core/adapters.py) and provide consistent `generate()` signatures with token and latency accounting.
 
 ### Available Adapters:
 - `OpenAIModelAdapter`: Direct asynchronous OpenAI API completions (`gpt-4o`, `gpt-4o-mini`, etc.).

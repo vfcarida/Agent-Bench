@@ -1,4 +1,4 @@
-"""Tests for Phase E: schema v2, validators, generators, graders, metrics."""
+"""Unit tests for schema v2, validators, generators, graders, and psychometric metrics."""
 from pathlib import Path
 
 import yaml

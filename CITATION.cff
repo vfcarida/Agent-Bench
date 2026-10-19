@@ -1,0 +1,67 @@
+cff-version: 1.2.0
+title: "Agent-Bench: Multi-Domain Agentic AI Evaluation & Safety Governance Framework"
+message: "If you use Agent-Bench in your research or enterprise evaluation pipelines, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: "Caridá"
+    given-names: "Vinicius"
+    alias: "vfcarida"
+    website: "https://github.com/vfcarida"
+repository-code: "https://github.com/vfcarida/Agent-Bench"
+url: "https://github.com/vfcarida/Agent-Bench"
+license: Apache-2.0
+version: "1.0.0"
+date-released: "2026-10-19"
+keywords:
+  - agentic-ai
+  - benchmark
+  - evaluation
+  - safety-gating
+  - pareto-frontier
+  - psychometrics
+  - financial-agents
+  - cybersecurity-agents
+references:
+  - type: article
+    title: "tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains"
+    authors:
+      - family-names: "Yao"
+        given-names: "Shunyu"
+      - family-names: "Shinn"
+        given-names: "Noah"
+      - family-names: "Razavi"
+        given-names: "Pedram"
+      - family-names: "Narasimhan"
+        given-names: "Karthik"
+    year: 2024
+    url: "https://arxiv.org/abs/2406.12045"
+  - type: article
+    title: "AI Agents That Matter"
+    authors:
+      - family-names: "Kapoor"
+        given-names: "Sayash"
+      - family-names: "Stroebl"
+        given-names: "Benedikt"
+      - family-names: "Siegel"
+        given-names: "Zachary S."
+      - family-names: "Nadgir"
+        given-names: "Nitya"
+      - family-names: "Narayanan"
+        given-names: "Arvind"
+    year: 2024
+    url: "https://arxiv.org/abs/2407.01502"
+  - type: article
+    title: "AgentHarm: A Benchmark for Measuring Harmfulness of LLM Agents"
+    authors:
+      - family-names: "Andriushchenko"
+        given-names: "Maksym"
+      - family-names: "Souly"
+        given-names: "Alexandra"
+    year: 2024
+    url: "https://arxiv.org/abs/2410.09024"
+  - type: article
+    title: "FINESSE-Bench: Benchmarking Financial Literacy and Robustness Across Difficulty Hierarchies"
+    authors:
+      - family-names: "FINESSE-Bench Contributors"
+    year: 2026
+    url: "https://arxiv.org/abs/2605.15482"

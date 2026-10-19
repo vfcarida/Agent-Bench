@@ -5,6 +5,8 @@ from pathlib import Path
 
 from jinja2 import Template
 
+from agent_bench.metrics.pareto import classify_autonomy_tier, compute_pareto_frontier
+
 _HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="{{ locale or 'en' }}">
 <head>
@@ -107,6 +109,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
                 <th>Latency</th>
                 <th>Reliability</th>
                 <th>Global</th>
+                <th>Autonomy Tier</th>
             </tr>
         </thead>
         <tbody>
@@ -127,6 +130,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
                 <td class="{{ score_class(sc.get('latency_score', 0.0)) }}">{{ "%.3f"|format(sc.get('latency_score', 0.0)) }}</td>
                 <td class="{{ score_class(sc.get('reliability_score', 0.0)) }}">{{ "%.3f"|format(sc.get('reliability_score', 0.0)) }}</td>
                 <td class="{{ score_class(sc.get('global_score', 0.0)) }}"><strong>{{ "%.3f"|format(sc.get('global_score', 0.0)) }}</strong></td>
+                <td><small>{{ sc.get('autonomy_label', sc.get('autonomy_tier', 'N/A')) }}</small></td>
             </tr>
         {% endfor %}
         </tbody>
@@ -219,16 +223,26 @@ def generate_html_report(
             else:
                 raise FileNotFoundError(f"Run artifact not found: {run_id}")
 
-    with open(artifact_path) as f:
+    with open(artifact_path, encoding="utf-8") as f:
         data = json.load(f)
 
     tasks_total = data.get("tasks_total", 0)
     tasks_passed = data.get("tasks_passed", 0)
     pass_rate = round(tasks_passed / tasks_total * 100, 1) if tasks_total > 0 else 0
 
-    scorecards = data.get("scorecards", []) or data.get("metrics", {}).get("scorecards", [])
+    raw_metrics = data.get("metrics", {})
+    scorecards = data.get("scorecards", []) or raw_metrics.get("scorecards", [])
+    for sc in scorecards:
+        if "autonomy_label" not in sc:
+            tier_info = classify_autonomy_tier(sc)
+            sc["autonomy_tier"] = tier_info["tier"]
+            sc["autonomy_label"] = tier_info["label"]
     scorecards_sorted = sorted(scorecards, key=lambda s: s.get("global_score", 0), reverse=True)
-    pass_k_results = data.get("pass_k_results", []) or data.get("metrics", {}).get("pass_k", [])
+    pass_k_results = data.get("pass_k_results", []) or raw_metrics.get("pass_k", [])
+    diagnostics = raw_metrics.get("diagnostics", {})
+    pareto = diagnostics.get("pareto_frontier") if isinstance(diagnostics, dict) else None
+    if pareto is None and scorecards:
+        pareto = compute_pareto_frontier(scorecards)
 
     context = {
         "run_id": data.get("run_id", Path(run_id).stem),
@@ -246,6 +260,7 @@ def generate_html_report(
         "scorecards": scorecards,
         "scorecards_sorted": scorecards_sorted,
         "pass_k_results": pass_k_results,
+        "pareto": pareto,
         "score_class": score_class,
         "locale": locale,
     }

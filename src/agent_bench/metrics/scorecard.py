@@ -1,8 +1,8 @@
 """Scorecard computation from task results.
 
 Enhanced with:
-- FINESSE-Bench-inspired balanced model profile (M9): captures cross-domain robustness
-- FinanceBench-inspired hallucination_rate (M10): first-class metric from grounding
+- FINESSE-Bench-inspired balanced model profile: captures cross-domain robustness
+- FinanceBench-inspired hallucination_rate: first-class metric from grounding
 """
 
 from typing import Any
@@ -127,7 +127,7 @@ def compute_scorecard(
         total_cost = sum(costs)
         cost_per_successful_task = total_cost / max(1, passed)
 
-        # M10: Hallucination rate over safety-passing tasks
+        # Hallucination rate over safety-passing tasks
         hallucination_rate = _compute_hallucination_rate(safety_passing_results)
 
     functional_ci = (float(func_ci_low), float(func_ci_high))
@@ -229,7 +229,7 @@ def compute_balanced_profile(
 
 
 def _compute_hallucination_rate(task_results: list[dict[str, Any]]) -> float:
-    """Extract hallucination rate from task results (FinanceBench M10).
+    """Extract hallucination rate from task results (FinanceBench grounding protocol).
 
     Looks for grounding judge metadata in results.
     """

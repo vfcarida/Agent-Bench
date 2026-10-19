@@ -23,6 +23,8 @@ The `bench` CLI provides commands for running benchmark suites, debugging execut
 | [`list-plugins`](#13-bench-list-plugins) | List registered domain, tool, and model plugins |
 | [`export-inspect`](#14-bench-export-inspect) | Export datasets to Inspect AI dataset format |
 | [`export-inspect-log`](#15-bench-export-inspect-log) | Export run traces to Inspect AI EvalLog format |
+| [`generate-security-suite`](#16-bench-generate-security-suite) | Generate OWASP Top 10 synthetic adversarial security suite |
+| [`diagnose-run`](#17-bench-diagnose-run) | Display Safety-Constrained Pareto Frontier, Autonomy Tiers, and psychometric diagnostics |
 
 ---
 
@@ -273,14 +275,21 @@ bench generate-security-suite --count 50 --domain cyber_sandbox --lang en --outp
 
 ---
 
-## 17. `bench check-agreement`
+## 17. `bench diagnose-run`
 
-Calculates inter-annotator agreement metrics (pairwise Cohen's Kappa, mean Kappa, and Krippendorff's Alpha) on calibration rating manifests.
+Displays the Safety-Constrained Cost-Quality Pareto Frontier, BCG Graduated Autonomy Tier classifications, 2D hypervolume indicator, difficulty degradation profiles, and IRT-inspired psychometric discriminative power for a completed benchmark run.
 
 ```bash
-bench check-agreement [OPTIONS]
+bench diagnose-run <run_id> [OPTIONS]
 ```
 
 ### Options
-- `--annotations PATH`: Path to YAML/JSON multi-annotator ratings file. *(Default: `datasets/gold/calibration/annotator_agreement.yaml`)*
+- `--runs-dir PATH`: Directory containing run artifacts. *(Default: `data/runs`)*
+- `--format [table|json]`: Output format (`table` renders Rich terminal tables; `json` outputs structured diagnostic JSON). *(Default: `table`)*
+
+### Example
+```bash
+bench diagnose-run run_20261019_120000 --format table
+bench diagnose-run run_20261019_120000 --format json
+```
 

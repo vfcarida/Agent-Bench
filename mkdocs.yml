@@ -60,8 +60,14 @@ nav:
   - Methodology:
       - Hard Safety Gating: methodology/safety-gating.md
       - Statistical Reliability Metrics: methodology/statistical-metrics.md
+      - Pareto Frontier & Psychometrics: methodology/pareto-and-psychometrics.md
       - Rubric & Tool Grading: methodology/rubric-and-tool-grading.md
       - Inter-Annotator Agreement: methodology/inter-annotator.md
+      - Benchmark Philosophy: benchmark_philosophy.md
+      - Data Governance: data_governance.md
+      - Annotation Guide: annotation_guide.md
+      - Adjudication Guide: adjudication_guide.md
+      - Dataset Card Template: dataset_card_template.md
   - Reference:
       - CLI Reference: reference/cli.md
       - Python API Reference: reference/api.md

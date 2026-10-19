@@ -24,7 +24,7 @@ def check_golden_run(run_file: Path | None = None) -> int:
         run_file = max(json_files, key=lambda f: f.stat().st_mtime)
 
     print(f"Inspecting run artifact: {run_file}")
-    with open(run_file, "r", encoding="utf-8") as f:
+    with open(run_file, encoding="utf-8") as f:
         data = json.load(f)
 
     suite_id = data.get("suite_id")

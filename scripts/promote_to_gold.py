@@ -3,7 +3,7 @@
 
 import argparse
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -16,7 +16,7 @@ from agent_bench.validators.pipeline import run_validation_pipeline
 
 def load_cases(source_path: Path) -> list[dict]:
     """Load cases from a YAML file."""
-    with open(source_path, "r") as f:
+    with open(source_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if isinstance(data, list):
         return data
@@ -29,7 +29,7 @@ def save_cases(target_path: Path, cases: list[dict]) -> None:
     """Append cases to a YAML file (or create it)."""
     existing: list[dict] = []
     if target_path.exists():
-        with open(target_path, "r") as f:
+        with open(target_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         if isinstance(data, list):
             existing = data
@@ -78,7 +78,7 @@ def main() -> None:
             case_id = err[1 : err.index("]")]
             invalid_ids.add(case_id)
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
 
     for case in cases:
         case_id = case.get("id", "unknown")
@@ -107,7 +107,7 @@ def main() -> None:
         print(f"  Saved {len(domain_cases)} cases to {target_path}")
 
     # Summary
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Total loaded: {len(cases)}")
     print(f"  Promoted: {len(valid_cases)}")
     print(f"  Rejected: {len(cases) - len(valid_cases)}")

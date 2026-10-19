@@ -1,4 +1,4 @@
-"""Unit tests for AB-T04: Real cost/latency/token accounting in suite path (T-COST-1).
+"""Unit tests for measured cost, latency, and token accounting in suite evaluation.
 
 Verifies:
 1. No hardcoded per-task constants (0.001, 50.0) in suite_runner.py.
@@ -56,7 +56,7 @@ class ConfiguredTokenStubAdapter(ModelAdapter):
 
 
 def test_no_hardcoded_cost_latency_constants_in_suite_runner():
-    """T-COST-1: Verify no literal 0.001 or 50.0 per-task constants remain in suite_runner.py."""
+    """Verify no literal 0.001 or 50.0 per-task constants remain in suite_runner.py."""
     suite_runner_path = Path("src/agent_bench/runners/suite_runner.py")
     assert suite_runner_path.exists()
     content = suite_runner_path.read_text(encoding="utf-8")
@@ -172,7 +172,7 @@ async def test_configured_pricing_used_without_warning():
 
 @pytest.mark.asyncio
 async def test_suite_path_measured_cost_and_scorecard_percentiles(tmp_path):
-    """T-COST-1 integration: assert scorecard cost derives from trace logger and percentiles are emitted."""
+    """Integration: assert scorecard cost derives from trace logger and percentiles are emitted."""
     suite_cfg = SuiteConfig(
         suite_id="test_suite_cost",
         name="Test Suite Cost",

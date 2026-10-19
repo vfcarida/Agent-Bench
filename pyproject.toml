@@ -9,7 +9,7 @@ description = "Enterprise Agent Evaluation Benchmark: Multi-Domain Reliability, 
 requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [
-    { name = "Agent-Bench Maintainers", email = "maintainers@agentbench.dev" },
+    { name = "Vinicius Caridá" },
 ]
 readme = "README.md"
 keywords = ["agent", "benchmark", "llm-evaluation", "safety-gate", "fintech", "pix", "reasoning-models", "tool-use", "rag"]
@@ -35,11 +35,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/agent-bench/agent-bench"
-Repository = "https://github.com/agent-bench/agent-bench"
-Documentation = "https://github.com/agent-bench/agent-bench/tree/main/docs"
-"Bug Tracker" = "https://github.com/agent-bench/agent-bench/issues"
-Changelog = "https://github.com/agent-bench/agent-bench/releases"
+Homepage = "https://github.com/vfcarida/Agent-Bench"
+Repository = "https://github.com/vfcarida/Agent-Bench"
+Documentation = "https://github.com/vfcarida/Agent-Bench/tree/main/docs"
+"Bug Tracker" = "https://github.com/vfcarida/Agent-Bench/issues"
+Changelog = "https://github.com/vfcarida/Agent-Bench/releases"
 
 [project.optional-dependencies]
 dev = [
@@ -48,6 +48,9 @@ dev = [
     "pytest-cov>=4.1",
     "ruff>=0.1",
     "mypy>=1.7",
+    "types-PyYAML>=6.0",
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.5",
 ]
 openai = ["openai>=1.6"]
 anthropic = ["anthropic>=0.18"]
@@ -92,5 +95,17 @@ module = [
     "vllm.*",
     "inspect_ai",
     "inspect_ai.*",
+    "yaml",
+    "yaml.*",
+    "numpy",
+    "numpy.*",
+    "torch",
+    "torch.*",
+    "transformers",
+    "transformers.*",
+    "peft",
+    "peft.*",
+    "accelerate",
+    "accelerate.*",
 ]
 ignore_missing_imports = true

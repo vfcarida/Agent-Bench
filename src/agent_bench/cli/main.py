@@ -306,14 +306,15 @@ def run_online_eval(
 @cli.command()
 @click.argument("run_ids", nargs=-1)
 @click.option("--output", default="data/reports/comparison.md", type=click.Path())
-def compare_runs(run_ids: tuple[str, ...], output: str) -> None:
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+def compare_runs(run_ids: tuple[str, ...], output: str, runs_dir: str) -> None:
     """Compare multiple benchmark runs."""
     from agent_bench.reports.comparator import compare
 
     if len(run_ids) < 2:
         console.print("[red]Need at least 2 run IDs to compare.[/red]")
         raise SystemExit(1)
-    compare(list(run_ids), Path(output))
+    compare(list(run_ids), Path(output), runs_dir=Path(runs_dir))
     console.print(f"[green]Comparison saved to {output}[/green]")
 
 
@@ -329,7 +330,7 @@ def generate_report(run_id: str, fmt: str, output_dir: str, runs_dir: str) -> No
         out = generate_html_report(run_id, Path(output_dir), runs_dir=Path(runs_dir))
     else:
         from agent_bench.reports.generator import generate
-        out = generate(run_id, fmt, Path(output_dir))
+        out = generate(run_id, fmt, Path(output_dir), runs_dir=Path(runs_dir))
     console.print(f"[green]Report generated: {out}[/green]")
 
 
@@ -723,8 +724,141 @@ def generate_security_suite(
     console.print(f"[green]Generated {len(valid_cases)} adversarial test cases saved to {out_p}[/green]")
 
 
+@cli.command()
+@click.argument("run_id")
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+@click.option(
+    "--format",
+    "output_format",
+    default="table",
+    type=click.Choice(["table", "json"]),
+    help="Output presentation format (table or json)",
+)
+def diagnose_run(run_id: str, runs_dir: str, output_format: str) -> None:
+    """Compute Pareto frontier, Graduated Autonomy tiers, and psychometric diagnostics for a run."""
+    import json
+    from typing import Any
+
+    from rich.table import Table
+
+    from agent_bench.metrics.difficulty_analysis import compute_difficulty_profile
+    from agent_bench.metrics.discriminative import compute_discriminative_power
+    from agent_bench.metrics.pareto import compute_pareto_frontier
+
+    base_runs_dir = Path(runs_dir)
+    potential = Path(run_id)
+    if potential.is_file():
+        artifact_path = potential
+    else:
+        artifact_path = base_runs_dir / f"{run_id}.json"
+        if not artifact_path.exists():
+            matches = list(base_runs_dir.glob(f"{run_id}*.json"))
+            if matches:
+                artifact_path = matches[0]
+            else:
+                console.print(f"[red]Run artifact not found: {run_id}[/red]")
+                raise SystemExit(1)
+
+    with open(artifact_path, encoding="utf-8") as f:
+        data: dict[str, Any] = json.load(f)
+
+    raw_metrics: dict[str, Any] = data.get("metrics", {})
+    scorecards: list[dict[str, Any]] = data.get("scorecards", []) or raw_metrics.get("scorecards", [])
+    task_results: list[dict[str, Any]] = raw_metrics.get("task_results", [])
+    diagnostics: dict[str, Any] = raw_metrics.get("diagnostics", {})
+
+    pareto = diagnostics.get("pareto_frontier") if isinstance(diagnostics, dict) else None
+    if pareto is None:
+        pareto = compute_pareto_frontier(scorecards)
+
+    by_system: dict[str, list[dict[str, Any]]] = {}
+    for tr in task_results:
+        sys_id = str(tr.get("system_id", data.get("system_id", "default")))
+        by_system.setdefault(sys_id, []).append(tr)
+
+    diff_profiles = diagnostics.get("difficulty_profiles") if isinstance(diagnostics, dict) else None
+    if diff_profiles is None and by_system:
+        diff_profiles = compute_difficulty_profile(by_system)
+
+    disc_power = diagnostics.get("discriminative_power") if isinstance(diagnostics, dict) else None
+    if disc_power is None and by_system:
+        disc_matrix = {
+            s_id: {str(r.get("task_id", "")): bool(r.get("passed", False)) for r in res}
+            for s_id, res in by_system.items()
+        }
+        disc_power = compute_discriminative_power(disc_matrix)
+
+    payload = {
+        "run_id": data.get("run_id", run_id),
+        "pareto_frontier": pareto,
+        "difficulty_profiles": diff_profiles or {},
+        "discriminative_power": disc_power or {},
+    }
+
+    if output_format == "json":
+        click.echo(json.dumps(payload, indent=2, default=str))
+        return
+
+    console.print(f"\n[bold]Run Diagnostics — {payload['run_id']}[/bold]")
+    console.print(
+        f"  Pareto 2D Hypervolume Indicator: [bold green]{pareto.get('hypervolume_2d', 0.0):.4f}[/bold green]"
+    )
+
+    table = Table(title="Safety-Constrained Pareto Frontier & Graduated Autonomy Tiers")
+    table.add_column("System ID", style="cyan")
+    table.add_column("Status", style="bold")
+    table.add_column("Quality", justify="right")
+    table.add_column("Pass^3", justify="right")
+    table.add_column("Cost/Success (USD)", justify="right")
+    table.add_column("Autonomy Tier", style="magenta")
+
+    for f_sys in pareto.get("frontier", []):
+        table.add_row(
+            str(f_sys.get("system_id")),
+            "[green]PARETO-OPTIMAL[/green]",
+            f"{float(f_sys.get('quality', 0.0)):.3f}",
+            f"{float(f_sys.get('pass_hat_3', 0.0)):.3f}",
+            f"${float(f_sys.get('cost_usd', 0.0)):.4f}",
+            str(f_sys.get("autonomy_label", f_sys.get("autonomy_tier", "N/A"))),
+        )
+    for d_sys in pareto.get("dominated", []):
+        dom_by = ", ".join(d_sys.get("dominated_by", []))
+        table.add_row(
+            str(d_sys.get("system_id")),
+            f"[yellow]DOMINATED (by {dom_by})[/yellow]",
+            f"{float(d_sys.get('quality', 0.0)):.3f}",
+            f"{float(d_sys.get('pass_hat_3', 0.0)):.3f}",
+            f"${float(d_sys.get('cost_usd', 0.0)):.4f}",
+            str(d_sys.get("autonomy_label", d_sys.get("autonomy_tier", "N/A"))),
+        )
+    for u_sys in pareto.get("safety_disqualified", []):
+        table.add_row(
+            str(u_sys.get("system_id")),
+            "[red]SAFETY-DISQUALIFIED[/red]",
+            f"{float(u_sys.get('quality', 0.0)):.3f}",
+            f"{float(u_sys.get('pass_hat_3', 0.0)):.3f}",
+            f"${float(u_sys.get('cost_usd', 0.0)):.4f}",
+            str(u_sys.get("autonomy_label", "Blocked")),
+        )
+    console.print(table)
+
+    if disc_power and disc_power.get("total_tasks", 0) > 0:
+        console.print(
+            f"\n[bold]Psychometric Discriminative Power[/bold] "
+            f"(Tasks={disc_power['total_tasks']}, Systems={disc_power['total_systems']})"
+        )
+        console.print(
+            f"  Mid-Band (10-90%) Rate: {disc_power.get('mid_band_10_90_rate', 0.0):.1%} | "
+            f"Gini: {disc_power.get('gini_coefficient', 0.0):.3f} | "
+            f"Item Discrimination: {disc_power.get('avg_item_discrimination', 0.0):.3f}"
+        )
+        for alert in disc_power.get("alerts", []):
+            console.print(f"  [yellow]Alert:[/yellow] {alert}")
+
+
 if __name__ == "__main__":
     cli()
+
 
 
 

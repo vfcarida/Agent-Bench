@@ -1,4 +1,4 @@
-"""Unit tests for semantic judge (AB-T08: injection defense + existing behaviour)."""
+"""Unit tests for semantic judge (prompt-injection defense and rubric evaluation)."""
 
 import pytest
 

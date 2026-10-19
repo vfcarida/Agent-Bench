@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """CLI script to generate synthetic benchmark cases."""
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -133,7 +132,7 @@ def main() -> None:
 
     families = list(GENERATORS.keys()) if args.family == "all" else [args.family]
 
-    print(f"Generating synthetic cases...")
+    print("Generating synthetic cases...")
     print(f"  Families: {', '.join(families)}")
     print(f"  Count per family: {args.count_per_family}")
     print(f"  Seed: {args.seed}")

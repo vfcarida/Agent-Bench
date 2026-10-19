@@ -1,7 +1,7 @@
-"""Athena model lineage tracking for merge genealogy.
+"""Model lineage tracking for merge genealogy.
 
-Tracks the parentage and merge configuration of Athena's merged models
-(Phase 1d — SLERP, TIES, DARE). When a merged model is evaluated, its
+Tracks the parentage and merge configuration of merged models
+(SLERP, TIES, DARE). When a merged model is evaluated, its
 lineage is attached to leaderboard entries so researchers can correlate
 merge strategy with benchmark performance.
 """

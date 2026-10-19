@@ -18,7 +18,7 @@ The Agent-Bench team takes the security of our benchmarking infrastructure, agen
 If you discover a security vulnerability (such as prompt injection escape, unauthorized command execution in sandboxes, credential leakage, or dataset tampering):
 
 1. **Do NOT open a public GitHub issue.**
-2. Send an email to **security@agent-bench.org** with:
+2. Submit a private report via [GitHub Security Advisories](https://github.com/vfcarida/Agent-Bench/security/advisories/new) to project author **Vinicius Caridá (`vfcarida`)** with:
    - A detailed description of the vulnerability.
    - Exact steps to reproduce or proof-of-concept (PoC) code.
    - Affected modules, runners, or tool adapters.

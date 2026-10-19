@@ -7,20 +7,28 @@ from typing import Any
 from agent_bench.storage.parquet import save_comparison_parquet
 
 
-def compare(run_ids: list[str], output_path: Path) -> None:
+def compare(
+    run_ids: list[str],
+    output_path: Path,
+    runs_dir: Path | None = None,
+) -> None:
     """Generate a comparison report across runs."""
-    runs_dir = Path("data/runs")
+    base_runs_dir = Path(runs_dir) if runs_dir else Path("data/runs")
     runs_data = []
 
     for run_id in run_ids:
-        path = runs_dir / f"{run_id}.json"
-        if not path.exists():
-            matches = list(runs_dir.glob(f"{run_id}*.json"))
-            if matches:
-                path = matches[0]
-            else:
-                continue
-        with open(path) as f:
+        potential = Path(run_id)
+        if potential.is_file():
+            path = potential
+        else:
+            path = base_runs_dir / f"{run_id}.json"
+            if not path.exists():
+                matches = list(base_runs_dir.glob(f"{run_id}*.json"))
+                if matches:
+                    path = matches[0]
+                else:
+                    continue
+        with open(path, encoding="utf-8") as f:
             runs_data.append(json.load(f))
 
     if len(runs_data) < 2:

@@ -10,8 +10,8 @@ Agent-Bench requires **Python 3.12+**. Install the core package with development
 
 ```bash
 # Clone the repository
-git clone https://github.com/agent-bench/agent-bench.git
-cd agent-bench
+git clone https://github.com/vfcarida/Agent-Bench.git
+cd Agent-Bench
 
 # Install editable package with development tools
 pip install -e ".[dev]"

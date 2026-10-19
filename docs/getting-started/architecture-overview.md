@@ -43,7 +43,7 @@
 
 ## 2. Core Protocol Interfaces
 
-All primary contracts reside in [`agent_bench.core.protocols`](file:///src/agent_bench/core/protocols.py):
+All primary contracts reside in [`agent_bench.core.protocols`](../../src/agent_bench/core/protocols.py):
 
 ### 2.1 `TaskEnvironment`
 Manages task execution state, tool definitions, and environment lifecycle:

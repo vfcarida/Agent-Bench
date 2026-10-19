@@ -29,6 +29,7 @@
 ### [Methodology](methodology/safety-gating.md)
 - [Hard Safety Gating](methodology/safety-gating.md)
 - [Statistical Reliability Metrics](methodology/statistical-metrics.md)
+- [Pareto Frontier, Graduated Autonomy & Psychometrics](methodology/pareto-and-psychometrics.md)
 - [Rubric & Tool Grading](methodology/rubric-and-tool-grading.md)
 - [Inter-Annotator Agreement & Calibration](methodology/inter-annotator.md)
 

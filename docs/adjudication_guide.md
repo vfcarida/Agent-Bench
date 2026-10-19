@@ -46,7 +46,7 @@ Every resolved disagreement must be recorded directly in the evaluation case or 
 ```yaml
 adjudication:
   date: "2026-09-20"
-  adjudicator: "maintainer@agent-bench.org"
+  adjudicator: "vfcarida"
   original_disagreement:
     annotator_a: "Transfer must fail immediately due to insufficient balance."
     annotator_b: "Transfer should ask the user for confirmation before failing."

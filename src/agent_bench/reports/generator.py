@@ -5,6 +5,8 @@ from pathlib import Path
 
 from jinja2 import Template
 
+from agent_bench.metrics.pareto import classify_autonomy_tier, compute_pareto_frontier
+
 _MD_TEMPLATE = """# Benchmark Report
 
 **Run ID:** {{ run_id }}
@@ -24,7 +26,18 @@ _MD_TEMPLATE = """# Benchmark Report
 | Tasks Failed | {{ tasks_failed }} |
 | Pass Rate | {{ pass_rate }}% |
 | Seed | {{ seed }} |
+{% if scorecards %}
+## System Scorecards & Graduated Autonomy Tiers
 
+| System | Domain | Functional | Safety Gate | Cost/Success | Pass^3 | Global | Autonomy Tier |
+|--------|--------|------------|-------------|--------------|--------|--------|---------------|
+{% for sc in scorecards %}| {{ sc.system_id }} | {{ sc.domain }} | {{ "%.3f"|format(sc.get('functional_score', 0.0)) }} | {{ "GATED" if sc.get('safety_gated') else "PASS" }} | ${{ "%.4f"|format(sc.get('cost_per_successful_task', 0.0)) }} | {{ "%.3f"|format(sc.get('pass_hat_3', 0.0)) }} | **{{ "%.3f"|format(sc.get('global_score', 0.0)) }}** | {{ sc.get('autonomy_label', sc.get('autonomy_tier', 'N/A')) }} |
+{% endfor %}{% endif %}{% if pareto and pareto.frontier %}
+## Safety-Constrained Pareto Frontier
+
+- **2D Hypervolume Indicator:** {{ "%.4f"|format(pareto.hypervolume_2d) }}
+- **Pareto-Optimal Systems:** {{ pareto.frontier | map(attribute='system_id') | join(', ') }}
+{% endif %}
 ## Metrics
 
 {% for name, value in metrics.items() %}
@@ -36,28 +49,49 @@ _MD_TEMPLATE = """# Benchmark Report
 """
 
 
-def generate(run_id: str, fmt: str, output_dir: Path) -> Path:
+def generate(
+    run_id: str,
+    fmt: str,
+    output_dir: Path,
+    runs_dir: Path | None = None,
+) -> Path:
     """Generate a report from a saved run artifact."""
-    runs_dir = Path("data/runs")
-    artifact_path = runs_dir / f"{run_id}.json"
+    base_runs_dir = Path(runs_dir) if runs_dir else Path("data/runs")
+    potential_path = Path(run_id)
 
-    if not artifact_path.exists():
-        # Try finding by prefix
-        matches = list(runs_dir.glob(f"{run_id}*.json"))
-        if matches:
-            artifact_path = matches[0]
-        else:
-            raise FileNotFoundError(f"Run artifact not found: {run_id}")
+    if potential_path.is_file():
+        artifact_path = potential_path
+    else:
+        artifact_path = base_runs_dir / f"{run_id}.json"
+        if not artifact_path.exists():
+            matches = list(base_runs_dir.glob(f"{run_id}*.json"))
+            if matches:
+                artifact_path = matches[0]
+            else:
+                raise FileNotFoundError(f"Run artifact not found: {run_id}")
 
-    with open(artifact_path) as f:
+    with open(artifact_path, encoding="utf-8") as f:
         data = json.load(f)
 
     tasks_total = data.get("tasks_total", 0)
     tasks_passed = data.get("tasks_passed", 0)
     pass_rate = round(tasks_passed / tasks_total * 100, 1) if tasks_total > 0 else 0
 
+    raw_metrics = data.get("metrics", {})
+    scorecards = data.get("scorecards", []) or raw_metrics.get("scorecards", [])
+    for sc in scorecards:
+        if "autonomy_label" not in sc:
+            tier_info = classify_autonomy_tier(sc)
+            sc["autonomy_tier"] = tier_info["tier"]
+            sc["autonomy_label"] = tier_info["label"]
+
+    diagnostics = raw_metrics.get("diagnostics", {})
+    pareto = diagnostics.get("pareto_frontier") if isinstance(diagnostics, dict) else None
+    if pareto is None and scorecards:
+        pareto = compute_pareto_frontier(scorecards)
+
     context = {
-        "run_id": data["run_id"],
+        "run_id": data.get("run_id", Path(run_id).stem),
         "suite_id": data.get("suite_id", "N/A"),
         "system_id": data.get("system_id", "N/A"),
         "date": data.get("started_at", ""),
@@ -69,21 +103,24 @@ def generate(run_id: str, fmt: str, output_dir: Path) -> Path:
         "tasks_failed": data.get("tasks_failed", 0),
         "pass_rate": pass_rate,
         "seed": data.get("seed", "N/A"),
-        "metrics": data.get("metrics", {}),
+        "metrics": raw_metrics,
+        "scorecards": scorecards,
+        "pareto": pareto,
     }
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    out_prefix = str(context["run_id"])[:8]
 
     if fmt == "markdown":
         template = Template(_MD_TEMPLATE)
         content = template.render(**context)
-        out_path = output_dir / f"{run_id[:8]}_report.md"
-        out_path.write_text(content)
+        out_path = output_dir / f"{out_prefix}_report.md"
+        out_path.write_text(content, encoding="utf-8")
     else:
         template = Template(_html_wrapper(_MD_TEMPLATE))
         content = template.render(**context)
-        out_path = output_dir / f"{run_id[:8]}_report.html"
-        out_path.write_text(content)
+        out_path = output_dir / f"{out_prefix}_report.html"
+        out_path.write_text(content, encoding="utf-8")
 
     return out_path
 
@@ -94,3 +131,4 @@ def _html_wrapper(md_template: str) -> str:
 <style>body{{font-family:monospace;max-width:900px;margin:auto;padding:2em}}
 table{{border-collapse:collapse}}td,th{{border:1px solid #ccc;padding:4px 8px}}</style>
 </head><body><pre>{md_template}</pre></body></html>"""
+

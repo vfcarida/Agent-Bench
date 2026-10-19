@@ -1,4 +1,4 @@
-"""Calibration harness for LLM-as-judge (AB-T08, EXPERIMENT lane).
+"""Calibration harness for LLM-as-judge evaluation.
 
 Purpose
 -------

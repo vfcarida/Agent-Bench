@@ -1,4 +1,4 @@
-"""Tests for Phase D: online eval, governance, observability, plugins, analytics."""
+"""Unit tests for online evaluation, governance, observability, plugins, and analytics."""
 
 import json
 

@@ -7,7 +7,7 @@ Welcome to the **Agent-Bench** project governance and maintainer guide. This doc
 ## 1. Project Governance & Roles
 
 ### 1.1 Maintainer Roles
-- **Lead Maintainer / BDFL**: Technical architecture decisions, final approval on breaking schema changes (`core/schema_v2.py`, `core/protocols.py`), and PyPI releases.
+- **Principal Architect & Lead Maintainer**: [Vinicius Caridá (`vfcarida`)](https://github.com/vfcarida) — Technical architecture decisions, final approval on breaking schema changes (`core/schema_v2.py`, `core/protocols.py`), and PyPI releases.
 - **Core Maintainers**: Code reviews, triage of issues, CI pipeline maintenance, evaluator calibration.
 - **Domain Stewards**: Domain experts overseeing dataset accuracy, tool schemas, and compliance constraints for specific verticals (`pix_assist`, `investment_advisor`, `sme_business_advisor`, `cyber_sandbox`).
 
@@ -42,7 +42,7 @@ Community contributions adding a new evaluation vertical must provide:
 2. **Domain Tool Implementations**: Typed `ToolAdapter` classes in `src/agent_bench/tools/`.
 3. **Gold Evaluation Tasks**: Valid `EvalCase` definitions placed in `datasets/gold/dev/<domain_name>.yaml`.
 4. **Integration Test**: Automated test in `tests/integration/test_<domain_name>_suite.py` asserting end-to-end execution.
-5. **Domain Documentation**: Reference guide in `docs/how_to_add_a_domain.md`.
+5. **Domain Documentation**: Reference guide in `docs/guides/adding-domain.md`.
 
 ---
 
@@ -65,4 +65,4 @@ Agent-Bench follows [Semantic Versioning 2.0.0](https://semver.org/).
 
 ## 5. Security & Vulnerability Reporting
 
-Security vulnerabilities (such as sandbox escape flaws or credential leakage risks) should **not** be reported via public GitHub issues. Please report privately to `security@agentbench.dev` or use GitHub Private Vulnerability Reporting. Maintainers will respond within 48 hours.
+Security vulnerabilities (such as sandbox escape flaws or credential leakage risks) should **not** be reported via public GitHub issues. Please report privately via [GitHub Private Vulnerability Reporting](https://github.com/vfcarida/Agent-Bench/security/advisories/new) to Lead Maintainer **Vinicius Caridá (`vfcarida`)**. Maintainers will respond within 48 hours.

@@ -3,11 +3,12 @@
   <p><strong>Professional MLOps Benchmark Framework for Evaluating LLM Agents as Complete Systems</strong></p>
 
   [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://python.org)
-  [![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/agent-bench/agent-bench/releases)
+  [![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/vfcarida/Agent-Bench/releases)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-  [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/agent-bench/agent-bench/actions)
-  [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/agent-bench/agent-bench/actions)
-  [![Architecture](https://img.shields.io/badge/architecture-Clean%20%2F%20Decoupled-orange.svg)](https://github.com/agent-bench/agent-bench)
+  [![Build Status](https://img.shields.io/badge/tests-551%20passed-brightgreen.svg)](https://github.com/vfcarida/Agent-Bench/actions)
+  [![Coverage](https://img.shields.io/badge/coverage-83%25-brightgreen.svg)](https://github.com/vfcarida/Agent-Bench/actions)
+  [![Type Checked](https://img.shields.io/badge/mypy-0%20errors%20%7C%20PEP%20561-blue.svg)](https://github.com/vfcarida/Agent-Bench)
+  [![Architecture](https://img.shields.io/badge/architecture-Clean%20%2F%20Decoupled-orange.svg)](https://github.com/vfcarida/Agent-Bench)
 </div>
 
 ---
@@ -21,8 +22,9 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
 **Agent-Bench** provides an end-to-end testing and analytics ecosystem to assess the complete agent lifecycle across dynamic domains. It measures:
 - 🎯 **Functional Correctness:** State assertion accuracy, execution of multi-turn plans, and tool call fidelity.
 - 🛡️ **Risk & Safety Compliance:** Refusal behavior on unsafe prompts, regulatory adherence, and forbidden action prevention.
-- 💰 **Operational Cost & Latency:** Detailed token consumption (`tokens_in`, `tokens_out`), financial cost tracking ($ USD), and latency distribution.
-- 🔄 **Statistical Reliability:** Unbiased per-task Pass@k aggregation, non-parametric bootstrap 95% confidence intervals, and pass^k (consistent success across trials) for high-risk domains.
+- 💰 **Operational Cost, Latency & Pareto Efficiency:** Detailed token consumption (`tokens_in`, `tokens_out`), financial cost tracking ($ USD), latency distributions, and **Safety-Constrained Cost-Quality Pareto Frontiers** with 2D hypervolume indicators.
+- 🔄 **Statistical Reliability & Graduated Autonomy:** Unbiased per-task `Pass@k` aggregation, non-parametric bootstrap 95% confidence intervals, `Pass^k` (consistent success across all $k$ trials) for high-risk domains, and automated classification into **Graduated Autonomy Tiers** (`Tier 1 — Shadow` $\rightarrow$ `Tier 4 — Full Bounded Autonomy`).
+- 📐 **Psychometric & Structural Diagnostics:** Adjacent-difficulty degradation ($\Delta_{\text{easy}\to\text{expert}}$), cross-domain balanced profiles, cross-family transfer gaps, and IRT-inspired benchmark discriminative power (`bench diagnose-run`).
 
 > **Note on Evaluation Baseline**: The default stub runner (`DefaultAgentRunner` without a backend model) is strictly a smoke agent for pipeline connectivity and test harness verification; it returns benign responses and empty states, and does **not** represent real-agent evaluation. For deterministic, answer-independent offline reference testing in CI, Agent-Bench provides `ScriptedAgentRunner`.
 
@@ -74,6 +76,11 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
 9. **Rich Interactive Visual Trace Exploration:**
    Inspect prompts, `<think>` internal reasoning blocks, tool arguments, environment observations, and judge verdicts via Rich terminal panels (`bench view-traces`).
 
+10. **Safety-Constrained Pareto Frontier, Graduated Autonomy & Psychometric Diagnostics:**
+    - **Safety-Constrained Pareto Frontier (`metrics/pareto.py`):** Evaluates systems across the joint space of functional quality and `cost_per_successful_task` (with 2D hypervolume indicators), automatically disqualifying any system that triggers the Phase 0 safety gate (*AI Agents That Matter*, `arXiv:2407.01502`).
+    - **Graduated Autonomy Tiers:** Classifies each evaluated system into enterprise deployment readiness tiers (`Tier 1 — Shadow / Advisory`, `Tier 2 — Human-in-the-Loop`, `Tier 3 — Guided Autonomy`, `Tier 4 — Full Bounded Autonomy`, or `Blocked — Safety Gate Triggered`).
+    - **Automated Run Diagnostics (`bench diagnose-run`):** Computes FINESSE-Bench difficulty degradation ($\Delta$), IRT-inspired item discrimination and saturation alerts, cross-domain balanced profiles, and cross-family transfer gaps on every suite run.
+
 ---
 
 ## 📦 Installation
@@ -82,8 +89,8 @@ Agent-Bench requires **Python 3.12+**.
 
 ```bash
 # Clone the repository
-git clone https://github.com/agent-bench/agent-bench.git
-cd agent-bench
+git clone https://github.com/vfcarida/Agent-Bench.git
+cd Agent-Bench
 
 # Install core package along with development requirements
 pip install -e ".[dev]"
@@ -142,15 +149,17 @@ agent-bench/
     synthetic/shadow/   # Auto-generated shadow cases for coverage expansion
     adversarial/        # Attack vectors and boundary-testing cases
   src/agent_bench/
-    cli/                # Click-based CLI commands
-    core/               # Protocols (AgentRunner, TaskEnvironment, Evaluator), Settings, Scenarios
-    graders/            # GatedEvaluator, RubricGrader, StateGrader, ToolCallGrader
-    judges/             # Deterministic, Semantic, Grounding, and Composite Judges
-    models/             # Provider adapters (OpenAI, Anthropic, HuggingFace, Stub)
-    runners/            # CaseRunner, SuiteRunner, PromptFormatter
-    storage/            # ExecutionTraceLogger, Resilient JSONL & Parquet Storage
-    validators/         # Schema validation & length-pruned Jaccard deduplication
-  tests/                # Unit & integration test suites (280+ tests)
+    cli/                # Click-based CLI commands (run-suite, diagnose-run, view-traces, etc.)
+    core/               # Protocols (AgentRunner, TaskEnvironment, Evaluator), Settings, Schema v2
+    graders/            # GatedEvaluator, SafetyGate, RubricGrader, StateGrader, ToolCallGrader
+    judges/             # Deterministic, Semantic, Grounding, CrossArtifact, and Calibration Harness
+    metrics/            # Pass@k/Pass^k, Pareto Frontier, Autonomy Tiers, Difficulty & IRT Diagnostics
+    models/             # Provider adapters (OpenAI, Anthropic, HuggingFace, vLLM, Stub)
+    reports/            # Markdown, HTML (Chart.js), Run Comparator, and Leaderboard generators
+    runners/            # CaseRunner, SuiteRunner, ScriptedAgentRunner, PromptFormatter
+    storage/            # ExecutionTraceLogger, Resilient JSONL & Parquet Analytics Storage
+    validators/         # Schema v2 validation, contamination gating & Jaccard deduplication
+  tests/                # Unit & integration test suites (551 passing tests, 83% coverage)
   Dockerfile            # Containerized execution environment
   docker-compose.yml    # Docker sandbox compose configuration
 ```
@@ -190,10 +199,13 @@ bench check-agreement --annotations datasets/gold/calibration/annotator_agreemen
 # 6. Check for holdout contamination and data leakage
 bench check-contamination --threshold 0.80
 
-# 7. Generate Markdown / HTML execution reports
+# 7. Diagnose Safety-Constrained Pareto Frontier, Autonomy Tiers & Psychometrics
+bench diagnose-run <run-id> --format table
+
+# 8. Generate Markdown / HTML execution reports
 bench generate-report <run-id> --format html
 
-# 8. Compare two evaluation runs side-by-side
+# 9. Compare two evaluation runs side-by-side
 bench compare-runs <run-id-1> <run-id-2>
 ```
 
@@ -238,13 +250,13 @@ Agent-Bench enforces strict evaluation protocols to measure reliability, cost, a
 Ensure all components and clean architecture protocols pass locally:
 
 ```bash
-# Run complete test suite (280+ tests)
+# Run complete test suite (551 passed tests)
 python -m pytest tests/ -v
 
 # Run specific unit test modules
 python -m pytest tests/unit/test_protocols.py -v
 python -m pytest tests/unit/test_gated_evaluator.py -v
-python -m pytest tests/unit/test_trace_logger.py -v
+python -m pytest tests/unit/test_pareto_and_psychometrics.py -v
 ```
 
 ---
@@ -262,12 +274,28 @@ python -m pytest tests/unit/test_trace_logger.py -v
 | | [Inspect AI Interoperability](docs/guides/inspect-ai-interoperability.md) | Evaluate Agent-Bench tasks with UK/US AISI Inspect AI |
 | **Methodology** | [Hard Safety Gating](docs/methodology/safety-gating.md) | Non-compensable Phase 0 safety invariants and refusal checks |
 | | [Statistical Reliability](docs/methodology/statistical-metrics.md) | Mathematical formulation of Pass@k, Pass^k, and bootstrap CIs |
+| | [Pareto Frontier & Psychometrics](docs/methodology/pareto-and-psychometrics.md) | Cost-quality Pareto frontier, Graduated Autonomy Tiers, and IRT diagnostics |
 | | [Rubric & Tool Grading](docs/methodology/rubric-and-tool-grading.md) | Hierarchical importance weights and critical gate capping |
+| | [Inter-Annotator Agreement](docs/methodology/inter-annotator.md) | Multi-rater Cohen's Kappa and Krippendorff's Alpha calibration |
+| **Governance & Roadmap** | [Architecture & Evolution Roadmap](ROADMAP.md) | Maturity governance tiers, verified capability matrix, and frontier tracks |
 | **Reference** | [CLI Reference Manual](docs/reference/cli.md) | Complete reference for all `bench` CLI commands and options |
+| | [Python API Reference](docs/reference/api.md) | Typed SDK protocols, runners, evaluators, and metric functions |
 
 ---
 
-## 📜 License
+## 🗺️ Roadmap & Maturity Governance
 
-This project is licensed under the terms of the **Apache-2.0** License.
+See [`ROADMAP.md`](ROADMAP.md) for the complete capability matrix, maturity tier governance (`Stable`, `Beta`, `Alpha`, `Experimental`, `Planned`), and next-horizon research tracks:
+- **Shipped (`Stable`):** Clean Architecture Protocols & Schema v2 (`py.typed`), Two-Phase Gated Evaluator (`Phase 0` Safety Gate $\rightarrow$ `Phase 1` Deterministic $\rightarrow$ `Phase 2` Judge), Per-Task `Pass@k` & `Pass^k` with 95% Bootstrap CIs, Safety-Constrained Pareto Frontier & BCG Graduated Autonomy Tiers (`metrics/pareto.py`), Psychometric & Difficulty Degradation Diagnostics (`bench diagnose-run`), Multi-Domain Sandboxes (`pix_assist`, `investment_advisor`, `sme_business_advisor`, `cyber_sandbox`), and Dataset Provenance & Contamination Gating.
+- **Shipped (`Experimental`):** Rubric-based `SemanticJudge` with prompt-injection defense and Cohen's $\kappa$ calibration gate (`bench calibrate-judge`).
+- **Next-Horizon (`Planned`):** Dual-Control Shared-World User Simulation ($\tau^2$-bench Dec-POMDP protocol), 2PL Item Response Theory (IRT) adaptive anchor subset selection, and native OpenTelemetry GenAI / Model Context Protocol (MCP) bridges.
+
+---
+
+## 📜 License & Authorship
+
+This project is licensed under the terms of the **Apache-2.0** License. See [`LICENSE`](LICENSE) and [`CITATION.cff`](CITATION.cff) for citation metadata.
+
+*Designed and architected by [Vinicius Caridá](https://github.com/vfcarida). Implementation and verification accelerated with AI-assisted engineering workflows.*
+
 

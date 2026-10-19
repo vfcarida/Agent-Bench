@@ -6,7 +6,7 @@ This tutorial demonstrates how to benchmark your own agent implementations in **
 
 ## 1. Overview: The `CallableAgentRunner` Bridge
 
-Agent-Bench does not force you to inherit from complex framework classes. By using [`CallableAgentRunner`](file:///src/agent_bench/runners/callable_runner.py), any synchronous or asynchronous Python callable can be evaluated against the benchmark suite.
+Agent-Bench does not force you to inherit from complex framework classes. By using [`CallableAgentRunner`](../../src/agent_bench/runners/callable_runner.py), any synchronous or asynchronous Python callable can be evaluated against the benchmark suite.
 
 ### Supported Signatures
 

@@ -1,8 +1,8 @@
-"""Unit and statistical simulation tests for AB-T05.
+"""Unit and statistical simulation tests for pass@k, pass^k, and bootstrap confidence intervals.
 
 Verifies:
-- T-PASSK-2: Monotonicity (pass^k <= pass@1 <= pass@k) and edge cases.
-- T-PASSK-1: Closed-form expectation and >=90/100 coverage of 95% bootstrap CI over Bernoulli(p).
+- Monotonicity (pass^k <= pass@1 <= pass@k) and edge cases.
+- Closed-form expectation and >=90/100 coverage of 95% bootstrap CI over Bernoulli(p).
 - Anti-pooling: Per-task aggregation vs pooled flattening.
 - High-risk reliability weighting: pass^k primary for transactional_high_risk & cyber_restricted.
 """
@@ -52,7 +52,7 @@ class TestPassHatK:
 
 
 class TestTPassK2MonotonicityAndEdgeCases:
-    """T-PASSK-2: Monotonicity pass^k <= pass@1 <= pass@k and edge cases."""
+    """Monotonicity pass^k <= pass@1 <= pass@k and edge cases."""
 
     @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
     def test_monotonicity_exhaustive(self, n: int):
@@ -94,7 +94,7 @@ class TestTPassK2MonotonicityAndEdgeCases:
 
 
 class TestTPassK1StatisticalSimulation:
-    """T-PASSK-1: Seeded Bernoulli(p) per-task simulation and bootstrap CI coverage."""
+    """Seeded Bernoulli(p) per-task simulation and bootstrap CI coverage."""
 
     def test_unbiased_estimator_exact_expectation(self):
         """Closed form: The binomial expectation of per-task pass@k and pass^k match theory exactly."""

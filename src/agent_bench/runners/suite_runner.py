@@ -16,8 +16,12 @@ from agent_bench.core.scenarios import Task
 from agent_bench.core.user_simulator import UserSimulator
 from agent_bench.datasets.loader import load_domain_tasks
 from agent_bench.metrics.compute import compute_pass_hat_k, compute_pass_k
+from agent_bench.metrics.difficulty_analysis import compute_difficulty_profile
+from agent_bench.metrics.discriminative import compute_discriminative_power
 from agent_bench.metrics.expanded import SPRTDecision, compute_bootstrap_ci, evaluate_wald_sprt
-from agent_bench.metrics.scorecard import compute_scorecard
+from agent_bench.metrics.pareto import classify_autonomy_tier, compute_pareto_frontier
+from agent_bench.metrics.scorecard import compute_balanced_profile, compute_scorecard
+from agent_bench.metrics.transfer_analysis import compute_transfer_gaps
 from agent_bench.runners.case_runner import DefaultAgentRunner, execute_task
 from agent_bench.runners.scripted import ScriptedAgentRunner
 from agent_bench.storage.jsonl import save_metrics_jsonl, save_run_manifest, save_traces_jsonl
@@ -197,9 +201,25 @@ async def run_suite(
                         mean_tokens_out = round(sum(repetition_tokens_out) / n_reps) if n_reps else 0
                         total_task_cost = sum(repetition_costs)
 
+                        raw_diff = str(
+                            task.metadata.get("difficulty", getattr(task.severity, "value", "medium"))
+                        ).lower()
+                        norm_diff = {
+                            "low": "easy",
+                            "easy": "easy",
+                            "medium": "medium",
+                            "high": "hard",
+                            "hard": "hard",
+                            "critical": "expert",
+                            "expert": "expert",
+                        }.get(raw_diff, "medium")
+                        task_family = str(task.metadata.get("family", task.domain))
+
                         task_result: dict[str, Any] = {
                             "task_id": task.task_id,
                             "domain": task.domain,
+                            "family": task_family,
+                            "difficulty": norm_diff,
                             "passed": task_passed,
                             "policy_violated": task_safety_violated,
                             "safety_violation": task_safety_violated,
@@ -347,7 +367,7 @@ async def run_suite(
                 sc = compute_scorecard(
                     system_id, domain, domain_results, suite_cfg.weighting_profile
                 )
-                scorecards.append({
+                sc_dict: dict[str, Any] = {
                     "system_id": system_id,
                     "domain": domain,
                     "functional_score": sc.functional_score,
@@ -368,7 +388,11 @@ async def run_suite(
                     "pass_at_3": sc.pass_at_3,
                     "weighting_profile": suite_cfg.weighting_profile,
                     "sampling_denominator": "all_trials_including_failures_timeouts",
-                })
+                }
+                tier_info = classify_autonomy_tier(sc_dict)
+                sc_dict["autonomy_tier"] = tier_info["tier"]
+                sc_dict["autonomy_label"] = tier_info["label"]
+                scorecards.append(sc_dict)
 
         flat_task_results = []
         for sys_id, results in all_task_results.items():
@@ -377,9 +401,36 @@ async def run_suite(
                 r_copy["system_id"] = sys_id
                 flat_task_results.append(r_copy)
 
+        # Compute Pareto frontier & psychometric diagnostics across evaluated systems
+        pareto_summary = compute_pareto_frontier(scorecards)
+        difficulty_profiles = compute_difficulty_profile(all_task_results)
+        discriminative_matrix: dict[str, dict[str, bool]] = {
+            sys_id: {str(r["task_id"]): bool(r.get("passed", False)) for r in res}
+            for sys_id, res in all_task_results.items()
+        }
+        discriminative_summary = compute_discriminative_power(discriminative_matrix)
+        balanced_profiles = {
+            sys_id: compute_balanced_profile(scorecards, sys_id)
+            for sys_id in all_task_results
+        }
+        transfer_profiles: dict[str, dict[str, Any]] = {}
+        for sys_id, res in all_task_results.items():
+            by_fam: dict[str, list[dict[str, Any]]] = {}
+            for r in res:
+                fam = str(r.get("family", r.get("domain", "default")))
+                by_fam.setdefault(fam, []).append(r)
+            transfer_profiles[sys_id] = compute_transfer_gaps(by_fam, score_field="passed")
+
         artifact.metrics["scorecards"] = scorecards
         artifact.metrics["pass_k"] = pass_k_results
         artifact.metrics["task_results"] = flat_task_results
+        artifact.metrics["diagnostics"] = {
+            "pareto_frontier": pareto_summary,
+            "difficulty_profiles": difficulty_profiles,
+            "discriminative_power": discriminative_summary,
+            "balanced_profiles": balanced_profiles,
+            "transfer_profiles": transfer_profiles,
+        }
         artifact.finalize()
         suite_span.set_attribute("tasks_passed", passed)
         suite_span.set_attribute("tasks_failed", failed)

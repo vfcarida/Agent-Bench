@@ -2,7 +2,7 @@
 
 In benchmark evaluation—especially when evaluating subjective dimensions or calibrating LLM judges against human consensus—measuring **rater agreement** is essential for scientific reliability and defensibility.
 
-Agent-Bench provides native statistical implementations for inter-rater reliability in [`agent_bench.metrics.inter_annotator`](file:///c:/Users/vinicius/Documents/GeminiCodes/Agent-Bench/src/agent_bench/metrics/inter_annotator.py):
+Agent-Bench provides native statistical implementations for inter-rater reliability in [`agent_bench.metrics.inter_annotator`](../../src/agent_bench/metrics/inter_annotator.py):
 1. **Cohen's Kappa ($\kappa$)**: Pairwise agreement for nominal categories between two annotators.
 2. **Krippendorff's Alpha ($\alpha$)**: Generalized agreement for two or more annotators supporting missing values.
 3. **Landis & Koch Benchmark Scale**: Standardized interpretation thresholds.

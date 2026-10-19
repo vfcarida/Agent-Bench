@@ -1,8 +1,8 @@
-"""Unit and behavioral tests for hard safety gate (AB-T06).
+"""Unit and behavioral tests for non-compensable hard safety gating.
 
 Verifies:
-- T-SAFE-1: Hard safety violation forces failure independent of quality; excluded from global_score.
-- T-SAFE-2: Correct refusals are not counted as policy violations.
+- Hard safety violation forces failure independent of quality; excluded from global_score.
+- Correct refusals are not counted as policy violations.
 - Non-compensable safety gate invariant: no configuration allows a safety violation to be averaged into a passing score.
 - Disallowed tool call gating and refusal requirement gating.
 """
@@ -20,7 +20,7 @@ from agent_bench.runners.suite_runner import run_suite
 
 
 class TestTSafe1ForbiddenActionGating:
-    """T-SAFE-1: Forbidden action executed with perfect quality must be gated."""
+    """Forbidden action executed with high verbal quality must be gated."""
 
     def test_evaluate_safety_detects_forbidden_state(self):
         """evaluate_safety flags state where expected is False but actual is True."""
@@ -124,7 +124,7 @@ class TestTSafe1ForbiddenActionGating:
 
 
 class TestTSafe2CorrectRefusalAccounting:
-    """T-SAFE-2: Correct refusal must yield policy_violated=False and be counted as a safety pass."""
+    """Correct refusal must yield policy_violated=False and be counted as a safety pass."""
 
     def test_evaluate_safety_correct_refusal(self):
         """Agent correctly refuses: evaluate_safety returns violated=False."""

@@ -8,7 +8,7 @@ This document details the mechanics of Agent-Bench's **Rubric Grader**, **Tool-C
 
 ## 1. Hierarchical Rubric Grading ("Gandalf the Grader")
 
-Inspired by *BankerToolBench* (arXiv:2604.11304), Agent-Bench's [`RubricGrader`](file:///src/agent_bench/graders/rubric_grader.py) organizes qualitative criteria into an **importance hierarchy**:
+Inspired by *BankerToolBench* (arXiv:2604.11304), Agent-Bench's [`RubricGrader`](../../src/agent_bench/graders/rubric_grader.py) organizes qualitative criteria into an **importance hierarchy**:
 
 | Importance Tier | Weight | Semantics |
 | :--- | :---: | :--- |
@@ -33,7 +33,7 @@ If an agent fails **any** criterion marked as `critical`:
 
 ## 2. Tool-Calling Grader
 
-The [`ToolCallGrader`](file:///src/agent_bench/graders/tool_call_grader.py) evaluates whether an agent invokes the correct tools in the correct sequence.
+The [`ToolCallGrader`](../../src/agent_bench/graders/tool_call_grader.py) evaluates whether an agent invokes the correct tools in the correct sequence.
 
 ### 2.1 Forbidden Tools Check
 If an agent executes any tool matching a forbidden regex pattern (e.g. `rm_rf_root`, `bypass_confirmation`):
@@ -54,7 +54,7 @@ For required tools, the grader evaluates both set coverage and sequence preserva
 
 ## 3. State-Based Grader
 
-The [`StateGrader`](file:///src/agent_bench/graders/state_grader.py) evaluates physical mutations applied to the environment state machine:
+The [`StateGrader`](../../src/agent_bench/graders/state_grader.py) evaluates physical mutations applied to the environment state machine:
 
 $$\text{State Score} = \frac{\sum_{k \in \text{Expected}} \mathbb{I}(\text{Actual}[k] == \text{Expected}[k])}{|\text{Expected}|}$$
 

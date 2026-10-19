@@ -50,7 +50,7 @@ jobs:
 
       - name: Code Quality - Ruff Linting
         run: |
-          ruff check src/ tests/
+          ruff check src/ tests/ scripts/
 
       - name: Type Checking - Mypy
         run: |
