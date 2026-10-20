@@ -149,6 +149,11 @@ class DefaultTaskEnvironment:
     def get_state(self) -> dict[str, Any]:
         return dict(self._state)
 
+    def update_state(self, mutations: dict[str, Any]) -> dict[str, Any]:
+        """Apply direct shared-world state mutations (e.g., from a dual-control user turn)."""
+        self._state.update(mutations)
+        return dict(self._state)
+
     def cleanup(self) -> None:
         self._state.clear()
         self._execution_history.clear()
@@ -459,7 +464,56 @@ async def _model_execute(
         if not response.tool_calls:
             messages.append({"role": "assistant", "content": response.content})
             if user_simulator is not None:
-                user_turn = await user_simulator.step(response.content, messages, task)
+                import inspect as _inspect
+
+                step_sig = _inspect.signature(user_simulator.step)
+                if "current_state" in step_sig.parameters:
+                    user_turn = await user_simulator.step(  # type: ignore[call-arg]
+                        response.content, messages, task, current_state=env.get_state()
+                    )
+                else:
+                    user_turn = await user_simulator.step(response.content, messages, task)
+
+                # Apply dual-control user state mutations and user tool calls
+                if getattr(user_turn, "state_mutations", None):
+                    if hasattr(env, "update_state") and callable(env.update_state):
+                        env.update_state(user_turn.state_mutations)
+                    elif hasattr(env, "_state") and isinstance(env._state, dict):
+                        env._state.update(user_turn.state_mutations)
+                    collected_traces.append(
+                        TraceEvent(
+                            event_type=TraceEventType.USER_ACTION,
+                            data={
+                                "actor": "user",
+                                "action_type": "state_mutation",
+                                "state_mutations": dict(user_turn.state_mutations),
+                                "step": step,
+                            },
+                        )
+                    )
+
+                for utc in getattr(user_turn, "user_tool_calls", []) or []:
+                    utc_name = str(utc.get("name", ""))
+                    utc_args = utc.get("arguments", {})
+                    if not isinstance(utc_args, dict):
+                        utc_args = {}
+                    if utc_name:
+                        user_tool_res = await env.execute_tool(utc_name, utc_args)
+                        collected_traces.append(
+                            TraceEvent(
+                                event_type=TraceEventType.USER_ACTION,
+                                data={
+                                    "actor": "user",
+                                    "action_type": "tool_call",
+                                    "tool_name": utc_name,
+                                    "arguments": utc_args,
+                                    "output": user_tool_res.output,
+                                    "success": user_tool_res.success,
+                                    "step": step,
+                                },
+                            )
+                        )
+
                 if not user_turn.finished and user_turn.content:
                     messages.append({"role": "user", "content": user_turn.content})
                     collected_traces.append(

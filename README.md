@@ -5,7 +5,7 @@
   [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://python.org)
   [![Release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/vfcarida/Agent-Bench/releases)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-  [![Build Status](https://img.shields.io/badge/tests-551%20passed-brightgreen.svg)](https://github.com/vfcarida/Agent-Bench/actions)
+  [![Build Status](https://img.shields.io/badge/tests-566%20passed-brightgreen.svg)](https://github.com/vfcarida/Agent-Bench/actions)
   [![Coverage](https://img.shields.io/badge/coverage-83%25-brightgreen.svg)](https://github.com/vfcarida/Agent-Bench/actions)
   [![Type Checked](https://img.shields.io/badge/mypy-0%20errors%20%7C%20PEP%20561-blue.svg)](https://github.com/vfcarida/Agent-Bench)
   [![Architecture](https://img.shields.io/badge/architecture-Clean%20%2F%20Decoupled-orange.svg)](https://github.com/vfcarida/Agent-Bench)
@@ -37,7 +37,7 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
    - `AgentRunner`: Executes agent reasoning independently of underlying frameworks (`DefaultAgentRunner`, `ScriptedAgentRunner`, or custom LLM loops).
    - `TaskEnvironment`: Sandboxes state management, tool execution, and environment lifecycle.
    - `Evaluator`: Handles scoring, assertion checks, and subjective evaluation.
-   - `UserSimulator`: Dynamically simulates conversational user personas, interactive clarifications, and slot-filling (`ScriptedUserSimulator`, `RuleBasedUserSimulator`, `ModelUserSimulator`).
+   - `UserSimulator`: Dynamically simulates conversational user personas, interactive clarifications, slot-filling, and **$\tau^2$-Bench Dec-POMDP dual-control shared-world actions** (`ScriptedUserSimulator`, `RuleBasedUserSimulator`, `ModelUserSimulator`, `DualControlUserSimulator`).
 
 2. **Hard Safety Gating & Non-Compensable Evaluation (Robustness & Integrity):**
    - **Phase 0 (Hard Safety Gate):** Evaluates non-negotiable safety constraints (refusal requirements, forbidden state changes, disallowed tools). Any breach immediately forces `passed=False` with `safety_violation=True`. Hard safety failures can **never** be averaged away or compensated by quality, latency, or cost.
@@ -76,10 +76,17 @@ Evaluating LLM-based agents requires moving beyond static, single-turn correctne
 9. **Rich Interactive Visual Trace Exploration:**
    Inspect prompts, `<think>` internal reasoning blocks, tool arguments, environment observations, and judge verdicts via Rich terminal panels (`bench view-traces`).
 
-10. **Safety-Constrained Pareto Frontier, Graduated Autonomy & Psychometric Diagnostics:**
+10. **Safety-Constrained Pareto Frontier, Graduated Autonomy & 2PL IRT Psychometric Diagnostics:**
     - **Safety-Constrained Pareto Frontier (`metrics/pareto.py`):** Evaluates systems across the joint space of functional quality and `cost_per_successful_task` (with 2D hypervolume indicators), automatically disqualifying any system that triggers the Phase 0 safety gate (*AI Agents That Matter*, `arXiv:2407.01502`).
     - **Graduated Autonomy Tiers:** Classifies each evaluated system into enterprise deployment readiness tiers (`Tier 1 — Shadow / Advisory`, `Tier 2 — Human-in-the-Loop`, `Tier 3 — Guided Autonomy`, `Tier 4 — Full Bounded Autonomy`, or `Blocked — Safety Gate Triggered`).
-    - **Automated Run Diagnostics (`bench diagnose-run`):** Computes FINESSE-Bench difficulty degradation ($\Delta$), IRT-inspired item discrimination and saturation alerts, cross-domain balanced profiles, and cross-family transfer gaps on every suite run.
+    - **2PL IRT Fast-Anchor & Run Diagnostics (`metrics/irt.py`, `bench diagnose-run`):** Fits a 2-Parameter Logistic Item Response Theory model ($\theta_j, a_i, b_i$), enables stratified Fisher Information fast-anchor evaluation (`bench run-suite --fast-anchor`), and computes FINESSE-Bench difficulty degradation ($\Delta$), cross-domain balanced profiles, and cross-family transfer gaps.
+11. **OpenTelemetry GenAI Semantic Conventions & Model Context Protocol (MCP) Bridge:**
+    - **OTLP GenAI Span Export (`bench export-otel`):** Exports benchmark runs and traces in native OpenTelemetry GenAI `resourceSpans` JSON (`gen_ai.system`, `gen_ai.usage.*`, `gen_ai.agent.autonomy_tier`, `gen_ai.safety.gated`).
+    - **Bidirectional MCP Bridge (`tools/mcp_bridge.py`):** Exposes any `TaskEnvironment` and `ToolAdapter` registry as a JSON-RPC 2.0 MCP (`2024-11-05`) server (`MCPToolServer`) and consumes external MCP servers as native `ToolAdapter` instances (`MCPClientToolAdapter`, `discover_mcp_tools`).
+12. **Multi-Agent Byzantine Resilience, Causal Counterfactual Replay & Online Drift Assurance:**
+    - **Byzantine Fault Tolerance (`runners/byzantine_orchestrator.py`):** Stress-tests multi-agent handoffs against hallucinated state, poisoned tool outputs, indirect prompt injection, and multi-agent collusion (`ByzantineOrchestratorRunner`, `compute_byzantine_resilience_metrics`).
+    - **Causal Counterfactual Replay (`runners/counterfactual.py`, `bench replay-counterfactual`):** Forks recorded trajectories at step $t$ to evaluate counterfactual state mutations, tool overrides, or user interventions without re-running earlier steps.
+    - **Shadow-Traffic Online Drift Monitor (`runners/online_eval.py`, `bench monitor-drift`):** Monitors production JSONL or OTLP GenAI spans against a certified baseline using tabular **CUSUM** change-point detectors and **Jensen-Shannon Divergence** (`OnlineDriftMonitor`, `CUSUMDriftDetector`).
 
 ---
 
@@ -158,8 +165,9 @@ agent-bench/
     reports/            # Markdown, HTML (Chart.js), Run Comparator, and Leaderboard generators
     runners/            # CaseRunner, SuiteRunner, ScriptedAgentRunner, PromptFormatter
     storage/            # ExecutionTraceLogger, Resilient JSONL & Parquet Analytics Storage
+    tools/              # DomainToolRegistry, PIX/Investment/SME/Cyber tools, and MCP JSON-RPC Bridge
     validators/         # Schema v2 validation, contamination gating & Jaccard deduplication
-  tests/                # Unit & integration test suites (551 passing tests, 83% coverage)
+  tests/                # Unit & integration test suites (591 passing tests, 89% coverage)
   Dockerfile            # Containerized execution environment
   docker-compose.yml    # Docker sandbox compose configuration
 ```
@@ -207,6 +215,49 @@ bench generate-report <run-id> --format html
 
 # 9. Compare two evaluation runs side-by-side
 bench compare-runs <run-id-1> <run-id-2>
+
+# 10. Export OpenTelemetry GenAI Semantic Convention spans (OTLP/JSON)
+bench export-otel <run-id> --output otel_genai_spans.json
+
+# 11. Aggregate multi-institution benchmarks under (epsilon, delta)-Differential Privacy
+bench aggregate-federated data/federated/submissions.json --epsilon 0.8 --min-sites 3
+
+# 12. Generate & verify SHA-256 Merkle Tree Selective-Disclosure Attestations
+bench attest-run <run-id> -o attestation.json
+bench verify-attestation attestation.json
+
+# 13. Run closed-loop 2PL IRT-guided evolutionary red-team fuzzing (MAP-Elites)
+bench evolve-redteam --domain pix_assist --generations 3 -o evolved_redteam.json
+
+# 14. Generate & verify Hardware-Bound TEE Enclave Attestation Quotes (PCR0/PCR1/PCR2/PCR8)
+bench attest-tee <run-id> --tee-arch aws_nitro_enclave --nonce audit_2026 -o tee_quote.json
+bench verify-tee-quote tee_quote.json --expected-nonce audit_2026
+
+# 15. Fold multiple runs into a constant-size Nova Relaxed R1CS IVC proof & verify
+bench fold-zk-proofs run_1.json run_2.json run_3.json -o ivc_bundle.json
+bench verify-ivc ivc_bundle.json
+
+# 16. Simulate mid-episode macroeconomic & regulatory regime shifts
+bench simulate-regime-shift --domain pix_assist --steps 6 -o regime_report.json
+
+# 17. Synthesize mechanistic SAE/CLT circuit clamping & evaluate Safety Recovery Rate
+bench steer-circuit --input-dim 4 --top-k 3 -o steer_report.json
+
+# 18. Prove & verify Zero-Knowledge Federated Leaderboard (Nova IVC + Differential Privacy)
+bench prove-federated-leaderboard subs.json --epsilon 1.0 -o zk_fed_bundle.json
+bench verify-federated-leaderboard zk_fed_bundle.json
+
+# 19. Simulate multi-agent market microstructure & liquidity contagion
+bench simulate-contagion --agents 4 --steps 8 --stabilizing -o contagion_report.json
+
+# 20. Build & verify Cryptographic Proof-Carrying Agent Trajectories (PCAT)
+bench verify-pcat --trajectory-id pcat_cli_001 -o pcat_report.json
+
+# 21. Execute sequential Bayesian 2PL IRT Computerized Adaptive Testing (CAT)
+bench simulate-cat --system-id cat_agent_v1 --true-theta 0.85 --target-se 0.42 -o cat_report.json
+
+# 22. Audit cross-jurisdictional statutory compliance (BACEN/LGPD, EU AI Act/GDPR, US SEC/FINRA)
+bench audit-jurisdictions --system-id global_bank_agent -o regulatory_report.json
 ```
 
 ---
@@ -250,13 +301,23 @@ Agent-Bench enforces strict evaluation protocols to measure reliability, cost, a
 Ensure all components and clean architecture protocols pass locally:
 
 ```bash
-# Run complete test suite (551 passed tests)
+# Run complete test suite (614 passed tests)
 python -m pytest tests/ -v
 
 # Run specific unit test modules
 python -m pytest tests/unit/test_protocols.py -v
 python -m pytest tests/unit/test_gated_evaluator.py -v
 python -m pytest tests/unit/test_pareto_and_psychometrics.py -v
+python -m pytest tests/unit/test_dual_control_irt_mcp_otel.py -v
+python -m pytest tests/unit/test_byzantine_counterfactual_and_drift.py -v
+python -m pytest tests/unit/test_formal_multimodal_federated_and_coverage.py -v
+python -m pytest tests/unit/test_zk_attestation_fuzzer_gui_and_coverage.py -v
+python -m pytest tests/unit/test_tee_activation_cdp_and_adapters_coverage.py -v
+python -m pytest tests/unit/test_hybrid_retrieval_episodic_memory_and_collusion.py -v
+python -m pytest tests/unit/test_sae_attribution_zk_r1cs_and_policy_synthesizer.py -v
+python -m pytest tests/unit/test_circuit_tracer_nova_ivc_and_regime_shift.py -v
+python -m pytest tests/unit/test_activation_steering_zk_federated_and_contagion.py -v
+python -m pytest tests/unit/test_pcat_bayesian_cat_and_regulatory_harmonizer.py -v
 ```
 
 ---
@@ -278,6 +339,7 @@ python -m pytest tests/unit/test_pareto_and_psychometrics.py -v
 | | [Rubric & Tool Grading](docs/methodology/rubric-and-tool-grading.md) | Hierarchical importance weights and critical gate capping |
 | | [Inter-Annotator Agreement](docs/methodology/inter-annotator.md) | Multi-rater Cohen's Kappa and Krippendorff's Alpha calibration |
 | **Governance & Roadmap** | [Architecture & Evolution Roadmap](ROADMAP.md) | Maturity governance tiers, verified capability matrix, and frontier tracks |
+| | [Scientific & Executive References](docs/REFERENCES.md) | Primary academic papers, Gartner/BCG/McKinsey frameworks, and standards |
 | **Reference** | [CLI Reference Manual](docs/reference/cli.md) | Complete reference for all `bench` CLI commands and options |
 | | [Python API Reference](docs/reference/api.md) | Typed SDK protocols, runners, evaluators, and metric functions |
 
@@ -285,10 +347,10 @@ python -m pytest tests/unit/test_pareto_and_psychometrics.py -v
 
 ## 🗺️ Roadmap & Maturity Governance
 
-See [`ROADMAP.md`](ROADMAP.md) for the complete capability matrix, maturity tier governance (`Stable`, `Beta`, `Alpha`, `Experimental`, `Planned`), and next-horizon research tracks:
-- **Shipped (`Stable`):** Clean Architecture Protocols & Schema v2 (`py.typed`), Two-Phase Gated Evaluator (`Phase 0` Safety Gate $\rightarrow$ `Phase 1` Deterministic $\rightarrow$ `Phase 2` Judge), Per-Task `Pass@k` & `Pass^k` with 95% Bootstrap CIs, Safety-Constrained Pareto Frontier & BCG Graduated Autonomy Tiers (`metrics/pareto.py`), Psychometric & Difficulty Degradation Diagnostics (`bench diagnose-run`), Multi-Domain Sandboxes (`pix_assist`, `investment_advisor`, `sme_business_advisor`, `cyber_sandbox`), and Dataset Provenance & Contamination Gating.
+See [`ROADMAP.md`](ROADMAP.md) for the complete capability matrix and maturity tier governance (`Stable`, `Beta`, `Alpha`, `Experimental`, `Planned`):
+- **Shipped (`Stable`):** Clean Architecture Protocols & Schema v2 (`py.typed`), Two-Phase Gated Evaluator (`Phase 0` Safety Gate $\rightarrow$ `Phase 1` Deterministic $\rightarrow$ `Phase 2` Judge), Formal Symbolic Trajectory Verification (`SymbolicTrajectoryVerifier` catching transient TOCTOU & tool precondition breaches), Cryptographic Proof-Carrying Agent Trajectories (`PCATVerifier`, `ProofCarryingStepEnvelope`, `bench verify-pcat`), Mechanistic Activation Probing & CoT-Action Faithfulness Monitoring (`LinearConceptProbe`, `CoTFaithfulnessMonitor`, `ActivationSafetyMonitor`), Sparse Autoencoder (SAE) Monosemantic Feature Dictionary & Causal Circuit Attribution (`SparseAutoencoderDictionary`, `SAECircuitAttributor`), Cross-Layer Transcoder (CLT) & Multi-Step Attribution Graph Extractor (`CrossLayerTranscoder`, `CircuitGraphTracer`, `AttributionGraph`), Mechanistic Circuit-Guided Automated Steering & Activation Clamping (`MechanisticActivationSteerer`, `FeatureClampIntervention`, `bench steer-circuit`), Per-Task `Pass@k` & `Pass^k` with 95% Bootstrap CIs, $\tau^2$-Bench Dual-Control Shared-World User Simulation (`DualControlUserSimulator`), Safety-Constrained Pareto Frontier & BCG Graduated Autonomy Tiers (`metrics/pareto.py`), 2PL IRT Fast-Anchor Evaluation (`metrics/irt.py`, `--fast-anchor`), Sequential Bayesian Computerized Adaptive Testing (`BayesianCATEngine`, `bench simulate-cat`), & Psychometric Diagnostics (`bench diagnose-run`), OpenTelemetry GenAI Span Export (`bench export-otel`) & MCP JSON-RPC 2.0 Bridge (`tools/mcp_bridge.py`), Multi-Agent Byzantine Fault Tolerance (`ByzantineOrchestratorRunner`), Game-Theoretic Multi-Agent Collusion, Sybil & Shapley Attribution Auditor (`MultiAgentCollusionDetector`, `ShapleyContributionAuditor`, `bench audit-collusion`), Causal Counterfactual Trajectory Replay (`CounterfactualSandbox`, `bench replay-counterfactual`), Long-Horizon Episodic Memory Consolidation & Interference Stress-Tester (`EpisodicMemoryStressRunner`, `MemoryInterferenceInjector`, `bench stress-memory`), Continual World-Model Adaptation & Non-Stationary Regime-Shift Simulator (`NonStationaryWorldSimulator`, `RegimeShiftShock`, `bench simulate-regime-shift`), Multi-Agent Macroeconomic Market Microstructure & Contagion Sandbox (`SystemicContagionSandbox`, `bench simulate-contagion`), Continuous Shadow-Traffic Online Drift Monitoring (`OnlineDriftMonitor`, `bench monitor-drift`), Hybrid BM25 + Dense Vector RRF Retrieval & RAG Poisoning Defense (`HybridRRFCorpusRetriever`, `CorpusPoisoningSanitizer`), Multi-Modal Document & UI-Action Financial Sandbox (`MultiModalFinancialSandbox`), Multi-Screen GUI/DOM Navigation & Accessibility Tree Runtime (`GUINavigationRuntime`), CDP Browser Bridge & Network Egress Firewall (`CDPBrowserSandbox`, `NetworkEgressFirewall`), Privacy-Preserving Federated Benchmark Aggregation (`FederatedBenchmarkAggregator`, `bench aggregate-federated`), Cryptographic Merkle Execution Attestation (`MerkleExecutionAttestor`, `bench attest-run`, `bench verify-attestation`), Hardware-Enforced TEE Enclave Attestation (`ConfidentialEnclaveAttestor`, `bench attest-tee`, `bench verify-tee-quote`), Verifiable Zero-Knowledge R1CS Circuit Compiler & Witness Verifier (`ZKEvaluationCircuitCompiler`, `bench compile-zk-circuit`, `bench verify-zk-circuit`), Incrementally Verifiable Computation (IVC) & Nova Relaxed R1CS Folding (`NovaIVCFolder`, `IVCAccumulatorBundle`, `bench fold-zk-proofs`, `bench verify-ivc`), Zero-Knowledge Federated Leaderboard Proofs (`ZKFederatedLeaderboardAggregator`, `bench prove-federated-leaderboard`, `bench verify-federated-leaderboard`), Cross-Lingual & Multi-Jurisdictional Regulatory Compliance Harmonizer (`RegulatoryComplianceHarmonizer`, `bench audit-jurisdictions`), Autonomous Self-Healing Sandbox Policy Synthesizer (`SelfHealingPolicySynthesizer`, `bench synthesize-policy`), Closed-Loop IRT Evolutionary Red-Team Fuzzer (`EvolutionaryRedTeamFuzzer`, `bench evolve-redteam`), Multi-Domain Sandboxes (`pix_assist`, `investment_advisor`, `sme_business_advisor`, `cyber_sandbox`), and Dataset Provenance & Contamination Gating.
 - **Shipped (`Experimental`):** Rubric-based `SemanticJudge` with prompt-injection defense and Cohen's $\kappa$ calibration gate (`bench calibrate-judge`).
-- **Next-Horizon (`Planned`):** Dual-Control Shared-World User Simulation ($\tau^2$-bench Dec-POMDP protocol), 2PL Item Response Theory (IRT) adaptive anchor subset selection, and native OpenTelemetry GenAI / Model Context Protocol (MCP) bridges.
+- **External Hardware & Post-Quantum Horizon (`Planned`):** Physical Bare-Metal Confidential GPU Attestation Bus Integration and Post-Quantum LatticeFold Proofs.
 
 ---
 
@@ -297,5 +359,3 @@ See [`ROADMAP.md`](ROADMAP.md) for the complete capability matrix, maturity tier
 This project is licensed under the terms of the **Apache-2.0** License. See [`LICENSE`](LICENSE) and [`CITATION.cff`](CITATION.cff) for citation metadata.
 
 *Designed and architected by [Vinicius Caridá](https://github.com/vfcarida). Implementation and verification accelerated with AI-assisted engineering workflows.*
-
-

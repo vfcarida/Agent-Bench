@@ -21,6 +21,10 @@ class TraceEventType(str, Enum):
     THINKING_BLOCK = "thinking_block"
     ADAPTER_SWAP = "adapter_swap"
     USER_MESSAGE = "user_message"
+    USER_ACTION = "user_action"
+    AGENT_STEP = "agent_step"
+    MODEL_CALL = "model_call"
+    SAFETY_CHECK = "safety_check"
 
 
 @dataclass

@@ -49,3 +49,9 @@ Every `SuiteRunner` execution automatically computes and attaches four diagnosti
    - Computes cross-domain mean, standard deviation, and robustness score ($\mu - 2\sigma$) to distinguish `balanced` generalists from `strong_local` domain specialists.
 4. **Cross-Family Transfer Profiles (`transfer_profiles`)**:
    - Measures performance transfer gaps from reference transactional tool tasks to RAG, multi-step planning, and adversarial security task families.
+5. **2-Parameter Logistic (2PL) Item Response Theory & Fast-Anchor Selection (`irt_analysis`)** (*tinyBenchmarks*, `arXiv:2402.14992`):
+   - Fits a 2PL IRT model across the system-by-task response matrix (`src/agent_bench/metrics/irt.py`):
+     $$P(Y_{j,i} = 1 \mid \theta_j, a_i, b_i) = \frac{1}{1 + \exp\!\big(-a_i(\theta_j - b_i)\big)}$$
+     where $\theta_j \in \mathbb{R}$ is agent latent ability, $a_i > 0$ is task discrimination, and $b_i \in \mathbb{R}$ is task difficulty.
+   - Computes item Fisher Information $I_i(\theta) = a_i^2 P_i(\theta)(1 - P_i(\theta))$ and selects a difficulty-stratified anchor subset (`select_irt_anchor_tasks`) that maximizes retained Fisher Information (`bench run-suite --fast-anchor --anchor-fraction 0.25`).
+

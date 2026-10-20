@@ -18,22 +18,24 @@ def _extract_case_dict(case: Any) -> dict[str, Any]:
     """Extract standard dictionary attributes from dict, Task, or EvalCase instances."""
     if isinstance(case, dict):
         return case
-    if hasattr(case, "to_dict") and callable(case.to_dict):
-        return case.to_dict()  # type: ignore[no-any-return]
-
-    d: dict[str, Any] = {}
-    if hasattr(case, "expected_final_state"):
+    d: dict[str, Any] = (
+        dict(case.to_dict())
+        if hasattr(case, "to_dict") and callable(case.to_dict)
+        else {}
+    )
+    if hasattr(case, "expected_final_state") and not d.get("expected_state_changes"):
         d["expected_state_changes"] = getattr(case, "expected_final_state", {})
         d["expected_final_state"] = getattr(case, "expected_final_state", {})
-    if hasattr(case, "expected_state_changes"):
+    if hasattr(case, "expected_state_changes") and getattr(case, "expected_state_changes"):
         d["expected_state_changes"] = getattr(case, "expected_state_changes", {})
-    if hasattr(case, "expected_refusal_mode"):
+    if hasattr(case, "expected_refusal_mode") and "expected_outcome" not in d:
         mode = getattr(case, "expected_refusal_mode")
         val = getattr(mode, "value", str(mode))
         if val != "none":
             d["expected_outcome"] = {"refusal_expected": True}
     if hasattr(case, "metadata") and isinstance(case.metadata, dict):
-        d.update(case.metadata)
+        for k, v in case.metadata.items():
+            d.setdefault(k, v)
     return d
 
 

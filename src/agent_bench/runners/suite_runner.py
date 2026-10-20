@@ -19,6 +19,13 @@ from agent_bench.metrics.compute import compute_pass_hat_k, compute_pass_k
 from agent_bench.metrics.difficulty_analysis import compute_difficulty_profile
 from agent_bench.metrics.discriminative import compute_discriminative_power
 from agent_bench.metrics.expanded import SPRTDecision, compute_bootstrap_ci, evaluate_wald_sprt
+from agent_bench.metrics.irt import (
+    IRTItemParameters,
+     IRTModelFit,
+    estimate_full_score_from_anchor,
+    fit_2pl_irt,
+    select_irt_anchor_tasks,
+)
 from agent_bench.metrics.pareto import classify_autonomy_tier, compute_pareto_frontier
 from agent_bench.metrics.scorecard import compute_balanced_profile, compute_scorecard
 from agent_bench.metrics.transfer_analysis import compute_transfer_gaps
@@ -26,9 +33,29 @@ from agent_bench.runners.case_runner import DefaultAgentRunner, execute_task
 from agent_bench.runners.scripted import ScriptedAgentRunner
 from agent_bench.storage.jsonl import save_metrics_jsonl, save_run_manifest, save_traces_jsonl
 from agent_bench.storage.parquet import save_metrics_parquet
-from agent_bench.utils.observability import SpanCollector
+from agent_bench.utils.observability import SpanCollector, convert_run_traces_to_otel_genai
 
 logger = structlog.get_logger()
+
+
+def _build_cold_start_irt_fit(tasks: list[Task]) -> IRTModelFit:
+    """Construct a prior 2PL IRT fit from canonical task difficulty metadata when no historical matrix exists."""
+    diff_to_b = {"easy": -1.2, "low": -1.2, "medium": 0.0, "hard": 1.0, "high": 1.0, "expert": 2.0, "critical": 2.0}
+    diff_to_p = {"easy": 0.77, "low": 0.77, "medium": 0.50, "hard": 0.27, "high": 0.27, "expert": 0.12, "critical": 0.12}
+    items: dict[str, IRTItemParameters] = {}
+    for t in tasks:
+        raw_d = str(t.metadata.get("difficulty", getattr(t.severity, "value", "medium"))).lower()
+        b_val = diff_to_b.get(raw_d, 0.0)
+        p_val = diff_to_p.get(raw_d, 0.50)
+        items[t.task_id] = IRTItemParameters(
+            task_id=t.task_id,
+            difficulty_b=b_val,
+            discrimination_a=1.0,
+            empirical_pass_rate=p_val,
+            fisher_info_at_zero=round(p_val * (1.0 - p_val), 6),
+            integrated_information=0.20,
+        )
+    return IRTModelFit(item_parameters=items, converged=True, iterations=0)
 
 
 async def run_suite(
@@ -46,6 +73,8 @@ async def run_suite(
     sprt_p1: float = 0.80,
     sprt_alpha: float = 0.05,
     sprt_beta: float = 0.10,
+    fast_anchor: bool = False,
+    anchor_fraction: float = 0.25,
 ) -> RunArtifact:
     """Run all tasks in a suite, repeating N times for pass@k.
 
@@ -66,6 +95,8 @@ async def run_suite(
         sprt_p1: Target pass rate hypothesis for SPRT.
         sprt_alpha: Type I error bound (false positive rate).
         sprt_beta: Type II error bound (false negative rate).
+        fast_anchor: When True, selects an IRT stratified anchor subset of tasks.
+        anchor_fraction: Fraction of tasks to evaluate in fast-anchor mode (default: 0.25).
     """
     collector = SpanCollector()
 
@@ -77,10 +108,21 @@ async def run_suite(
             seed=suite_cfg.seed,
         )
 
-        all_tasks = []
+        full_suite_tasks: list[Task] = []
         for domain_id in suite_cfg.domains:
             tasks = load_domain_tasks(domain_id, split=suite_cfg.split)
-            all_tasks.extend(tasks)
+            full_suite_tasks.extend(tasks)
+
+        prior_irt_fit = _build_cold_start_irt_fit(full_suite_tasks)
+        anchor_selection = select_irt_anchor_tasks(
+            prior_irt_fit, anchor_fraction=anchor_fraction
+        )
+
+        if fast_anchor and full_suite_tasks:
+            anchor_id_set = set(anchor_selection["anchor_task_ids"])
+            all_tasks = [t for t in full_suite_tasks if t.task_id in anchor_id_set]
+        else:
+            all_tasks = list(full_suite_tasks)
 
         artifact.tasks_total = len(all_tasks) * len(suite_cfg.systems) * suite_cfg.repeat_n
         passed = 0
@@ -409,6 +451,26 @@ async def run_suite(
             for sys_id, res in all_task_results.items()
         }
         discriminative_summary = compute_discriminative_power(discriminative_matrix)
+        irt_fit = fit_2pl_irt(discriminative_matrix)
+        irt_anchor_subset = select_irt_anchor_tasks(irt_fit, anchor_fraction=anchor_fraction)
+        irt_Reference_fit = prior_irt_fit if fast_anchor else irt_fit
+        irt_Reference_weights = (
+            anchor_selection["item_weights"]
+            if fast_anchor
+            else irt_anchor_subset["item_weights"]
+        )
+        irt_anchor_estimates = {
+            sys_id: estimate_full_score_from_anchor(
+                {
+                    tid: passed_flag
+                    for tid, passed_flag in sys_outcomes.items()
+                    if tid in irt_Reference_weights or fast_anchor
+                },
+                irt_Reference_fit,
+                item_weights=irt_Reference_weights,
+            )
+            for sys_id, sys_outcomes in discriminative_matrix.items()
+        }
         balanced_profiles = {
             sys_id: compute_balanced_profile(scorecards, sys_id)
             for sys_id in all_task_results
@@ -428,6 +490,13 @@ async def run_suite(
             "pareto_frontier": pareto_summary,
             "difficulty_profiles": difficulty_profiles,
             "discriminative_power": discriminative_summary,
+            "irt_analysis": {
+                "fast_anchor_mode": fast_anchor,
+                "anchor_fraction": anchor_fraction,
+                "model_fit": irt_fit.to_dict(),
+                "recommended_anchor": irt_anchor_subset,
+                "anchor_score_estimates": irt_anchor_estimates,
+            },
             "balanced_profiles": balanced_profiles,
             "transfer_profiles": transfer_profiles,
         }
@@ -445,15 +514,24 @@ async def run_suite(
     save_metrics_jsonl(all_metric_records, run_dir / "metrics.jsonl")
     save_metrics_parquet(all_metric_records, run_dir / "metrics.parquet")
 
-    # Save observability spans
+    # Save observability spans (both legacy OTEL and GenAI Semantic Conventions OTLP/JSON)
     spans_data = collector.export_otel_format()
     if spans_data:
         (run_dir / "spans.json").write_text(json.dumps(spans_data, indent=2, default=str))
 
+    serialized_manifest = _serialize_artifact(artifact, scorecards, pass_k_results)
+    otel_genai_payload = convert_run_traces_to_otel_genai(
+        serialized_manifest,
+        [{"event_type": t.event_type.value, "data": t.data} for t in artifact.traces],
+    )
+    (run_dir / "otel_genai_spans.json").write_text(
+        json.dumps(otel_genai_payload, indent=2, default=str), encoding="utf-8"
+    )
+
     # Flat artifact
     artifact_path = output_dir / f"{artifact.run_id}.json"
     artifact_path.write_text(json.dumps(
-        _serialize_artifact(artifact, scorecards, pass_k_results),
+        serialized_manifest,
         indent=2, default=str,
     ))
 

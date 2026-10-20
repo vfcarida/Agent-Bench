@@ -106,6 +106,19 @@ class Evaluator(Protocol):
 
 
 # Re-export UserSimulator and UserTurn for Clean Architecture protocol access
-from agent_bench.core.user_simulator import UserSimulator, UserTurn  # noqa: E402
+from agent_bench.core.user_simulator import (  # noqa: E402
+    DualControlAction,
+    DualControlUserSimulator,
+    UserSimulator,
+    UserTurn,
+)
 
-__all__ = ["AgentRunner", "TaskEnvironment", "Evaluator", "UserSimulator", "UserTurn"]
+__all__ = [
+    "AgentRunner",
+    "DualControlAction",
+    "DualControlUserSimulator",
+    "Evaluator",
+    "TaskEnvironment",
+    "UserSimulator",
+    "UserTurn",
+]

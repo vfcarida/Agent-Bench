@@ -1,5 +1,10 @@
 """Metric computation utilities."""
 
+from agent_bench.metrics.adaptive_cat import (
+    BayesianCATEngine,
+    CATSessionReport,
+    CATStepTelemetry,
+)
 from agent_bench.metrics.compute import compute_pass_hat_k, compute_pass_k, compute_task_metrics
 from agent_bench.metrics.difficulty_analysis import (
     compare_difficulty_robustness,
@@ -17,6 +22,15 @@ from agent_bench.metrics.expanded import (
     compute_wilson_score_interval,
     evaluate_wald_sprt,
 )
+from agent_bench.metrics.irt import (
+    IRTItemParameters,
+    IRTModelFit,
+    estimate_full_score_from_anchor,
+    fisher_information_2pl,
+    fit_2pl_irt,
+    logistic_2pl,
+    select_irt_anchor_tasks,
+)
 from agent_bench.metrics.pareto import (
     AutonomyTier,
     classify_autonomy_tier,
@@ -33,6 +47,11 @@ from agent_bench.metrics.transfer_analysis import (
 
 __all__ = [
     "AutonomyTier",
+    "BayesianCATEngine",
+    "CATSessionReport",
+    "CATStepTelemetry",
+    "IRTItemParameters",
+    "IRTModelFit",
     "MetricsReport",
     "SPRTDecision",
     "build_metrics_report",
@@ -54,7 +73,11 @@ __all__ = [
     "compute_task_metrics",
     "compute_transfer_gaps",
     "compute_wilson_score_interval",
+    "estimate_full_score_from_anchor",
     "evaluate_wald_sprt",
+    "fisher_information_2pl",
+    "fit_2pl_irt",
+    "logistic_2pl",
     "rank_by_transfer_robustness",
+    "select_irt_anchor_tasks",
 ]
-

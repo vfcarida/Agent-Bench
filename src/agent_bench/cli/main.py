@@ -107,9 +107,21 @@ def validate_datasets(fixtures_dir: str) -> None:
 @click.option(
     "--user-simulator",
     "user_sim_type",
-    type=click.Choice(["none", "scripted", "rule_based", "human"]),
+    type=click.Choice(["none", "scripted", "rule_based", "dual_control", "human"]),
     default="none",
     help="Attach interactive user simulator for multi-turn conversational benchmark tasks.",
+)
+@click.option(
+    "--fast-anchor",
+    is_flag=True,
+    default=False,
+    help="Evaluate only an IRT-stratified anchor subset of tasks for fast score estimation.",
+)
+@click.option(
+    "--anchor-fraction",
+    default=0.25,
+    type=float,
+    help="Fraction of suite tasks to evaluate in --fast-anchor mode (default: 0.25).",
 )
 @click.pass_context
 def run_suite(
@@ -125,6 +137,8 @@ def run_suite(
     concurrency: int,
     enable_sprt: bool,
     user_sim_type: str,
+    fast_anchor: bool,
+    anchor_fraction: float,
 ) -> None:
     """Run a complete benchmark suite."""
     from agent_bench.runners.suite_runner import run_suite as _run_suite
@@ -160,6 +174,10 @@ def run_suite(
         from agent_bench.core.user_simulator import RuleBasedUserSimulator
 
         user_simulator = RuleBasedUserSimulator()
+    elif user_sim_type == "dual_control":
+        from agent_bench.core.user_simulator import DualControlUserSimulator
+
+        user_simulator = DualControlUserSimulator()
     elif user_sim_type == "human":
         from agent_bench.core.user_simulator import HumanUserSimulator
 
@@ -177,6 +195,8 @@ def run_suite(
                 concurrency=concurrency,
                 user_simulator=user_simulator,
                 enable_sprt=enable_sprt,
+                fast_anchor=fast_anchor,
+                anchor_fraction=anchor_fraction,
             )
         )
     except ConfigError as e:
@@ -201,7 +221,7 @@ def run_suite(
 @click.option(
     "--user-simulator",
     "user_sim_type",
-    type=click.Choice(["none", "scripted", "rule_based", "human"]),
+    type=click.Choice(["none", "scripted", "rule_based", "dual_control", "human"]),
     default="none",
     help="Attach interactive user simulator (human for terminal red-teaming).",
 )
@@ -217,6 +237,7 @@ def run_case(
 ) -> None:
     """Run a single benchmark case."""
     from agent_bench.core.user_simulator import (
+        DualControlUserSimulator,
         HumanUserSimulator,
         RuleBasedUserSimulator,
         ScriptedUserSimulator,
@@ -230,6 +251,8 @@ def run_case(
         user_simulator = ScriptedUserSimulator()
     elif user_sim_type == "rule_based":
         user_simulator = RuleBasedUserSimulator()
+    elif user_sim_type == "dual_control":
+        user_simulator = DualControlUserSimulator()
     elif user_sim_type == "human":
         user_simulator = HumanUserSimulator()
 
@@ -781,18 +804,29 @@ def diagnose_run(run_id: str, runs_dir: str, output_format: str) -> None:
         diff_profiles = compute_difficulty_profile(by_system)
 
     disc_power = diagnostics.get("discriminative_power") if isinstance(diagnostics, dict) else None
+    disc_matrix: dict[str, dict[str, bool]] = {
+        s_id: {str(r.get("task_id", "")): bool(r.get("passed", False)) for r in res}
+        for s_id, res in by_system.items()
+    }
     if disc_power is None and by_system:
-        disc_matrix = {
-            s_id: {str(r.get("task_id", "")): bool(r.get("passed", False)) for r in res}
-            for s_id, res in by_system.items()
-        }
         disc_power = compute_discriminative_power(disc_matrix)
+
+    irt_analysis = diagnostics.get("irt_analysis") if isinstance(diagnostics, dict) else None
+    if irt_analysis is None and disc_matrix:
+        from agent_bench.metrics.irt import fit_2pl_irt, select_irt_anchor_tasks
+
+        irt_fit = fit_2pl_irt(disc_matrix)
+        irt_analysis = {
+            "model_fit": irt_fit.to_dict(),
+            "recommended_anchor": select_irt_anchor_tasks(irt_fit, anchor_fraction=0.25),
+        }
 
     payload = {
         "run_id": data.get("run_id", run_id),
         "pareto_frontier": pareto,
         "difficulty_profiles": diff_profiles or {},
         "discriminative_power": disc_power or {},
+        "irt_analysis": irt_analysis or {},
     }
 
     if output_format == "json":
@@ -855,10 +889,763 @@ def diagnose_run(run_id: str, runs_dir: str, output_format: str) -> None:
         for alert in disc_power.get("alerts", []):
             console.print(f"  [yellow]Alert:[/yellow] {alert}")
 
+    if irt_analysis and isinstance(irt_analysis, dict):
+        rec_anchor = irt_analysis.get("recommended_anchor", {})
+        anchor_ids = rec_anchor.get("anchor_task_ids", [])
+        if anchor_ids:
+            console.print(
+                f"\n[bold]2PL IRT Fast-Anchor Subset[/bold] "
+                f"(Count={len(anchor_ids)}/{rec_anchor.get('total_tasks', 0)}, "
+                f"Info Retention={rec_anchor.get('information_retention_ratio', 0.0):.1%})"
+            )
+            console.print(f"  Anchor Tasks: {', '.join(str(x) for x in anchor_ids[:10])}")
+
+
+@cli.command("export-otel")
+@click.argument("run_id")
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+@click.option("--output", "-o", default=None, type=click.Path(), help="Output OTLP GenAI JSON file path")
+def export_otel(run_id: str, runs_dir: str, output: str | None) -> None:
+    """Export a benchmark run in OpenTelemetry GenAI Semantic Conventions (OTLP/JSON)."""
+    import json
+    from typing import Any
+
+    from agent_bench.utils.observability import convert_run_traces_to_otel_genai
+
+    base_runs_dir = Path(runs_dir)
+    artifact_path = base_runs_dir / f"{run_id}.json"
+    if not artifact_path.exists():
+        matches = list(base_runs_dir.glob(f"{run_id}*.json"))
+        if matches:
+            artifact_path = matches[0]
+        else:
+            console.print(f"[red]Run artifact not found: {run_id}[/red]")
+            raise SystemExit(1)
+
+    with open(artifact_path, encoding="utf-8") as f:
+        manifest: dict[str, Any] = json.load(f)
+
+    traces_list: list[dict[str, Any]] = []
+    traces_file = base_runs_dir / str(manifest.get("run_id", run_id)) / "traces.jsonl"
+    if traces_file.exists():
+        for line in traces_file.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                traces_list.append(json.loads(line))
+
+    otlp_payload = convert_run_traces_to_otel_genai(manifest, traces_list)
+    if output:
+        out_path = Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(otlp_payload, indent=2, default=str), encoding="utf-8")
+        console.print(f"[green]Exported OTLP GenAI spans to {out_path}[/green]")
+    else:
+        click.echo(json.dumps(otlp_payload, indent=2, default=str))
+
+
+@cli.command("replay-counterfactual")
+@click.argument("run_id")
+@click.option("--task-id", required=True, help="Task ID to fork and replay counterfactually")
+@click.option("--domain", default="pix_assist", help="Task domain")
+@click.option("--fork-step", default=1, type=int, help="Trajectory step index to fork at")
+@click.option("--mutate-state", default="{}", help="JSON dictionary of counterfactual state mutations")
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+def replay_counterfactual(
+    run_id: str,
+    task_id: str,
+    domain: str,
+    fork_step: int,
+    mutate_state: str,
+    runs_dir: str,
+) -> None:
+    """Replay a recorded trajectory from fork_step with a counterfactual state mutation."""
+    import json
+    from typing import Any
+
+    from agent_bench.core.scenarios import Task
+    from agent_bench.datasets.loader import load_domain_tasks
+    from agent_bench.runners.counterfactual import (
+        CounterfactualIntervention,
+        CounterfactualSandbox,
+    )
+
+    base_runs_dir = Path(runs_dir)
+    traces_file = base_runs_dir / run_id / "traces.jsonl"
+    traces_list: list[dict[str, Any]] = []
+    if traces_file.exists():
+        for line in traces_file.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                rec = json.loads(line)
+                if rec.get("task_id") in (None, task_id) or rec.get("data", {}).get("task_id") in (
+                    None,
+                    task_id,
+                ):
+                    traces_list.append(rec)
+
+    tasks = load_domain_tasks(domain)
+    task = next((t for t in tasks if t.task_id == task_id), None)
+    if task is None:
+        task = Task(
+            task_id=task_id,
+            domain=domain,
+            name=task_id,
+            description=f"Counterfactual task {task_id}",
+            input_messages=[{"role": "user", "content": "Execute task"}],
+        )
+
+    state_mutations: dict[str, Any] = json.loads(mutate_state)
+    sandbox = CounterfactualSandbox()
+    intervention = CounterfactualIntervention(
+        fork_step=fork_step,
+        intervention_type="mutate_state",
+        state_mutations=state_mutations,
+    )
+    res = asyncio.run(sandbox.replay_with_intervention(task, traces_list, intervention))
+    click.echo(json.dumps(res.to_dict(), indent=2, default=str))
+
+
+@cli.command("monitor-drift")
+@click.argument("baseline_run_id")
+@click.argument("shadow_path", type=click.Path(exists=True))
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing baseline run")
+def monitor_drift(baseline_run_id: str, shadow_path: str, runs_dir: str) -> None:
+    """Monitor shadow traffic (JSONL or OTLP JSON) for CUSUM & JSD drift against a baseline run."""
+    import json
+    from typing import Any
+
+    from agent_bench.runners.online_eval import OnlineDriftMonitor, load_traces_from_jsonl
+
+    base_runs_dir = Path(runs_dir)
+    artifact_path = base_runs_dir / f"{baseline_run_id}.json"
+    if not artifact_path.exists():
+        console.print(f"[red]Baseline run artifact not found: {baseline_run_id}[/red]")
+        raise SystemExit(1)
+
+    baseline_manifest: dict[str, Any] = json.loads(artifact_path.read_text(encoding="utf-8"))
+    shadow_p = Path(shadow_path)
+    if shadow_p.suffix.lower() == ".jsonl":
+        shadow_data: Any = load_traces_from_jsonl(shadow_p)
+    else:
+        raw_text = shadow_p.read_text(encoding="utf-8").strip()
+        parsed = json.loads(raw_text)
+        shadow_data = parsed if isinstance(parsed, (list, dict)) else []
+
+    monitor = OnlineDriftMonitor()
+    report = monitor.evaluate_shadow_traffic(
+        baseline_manifest, shadow_data, shadow_source=str(shadow_p)
+    )
+    click.echo(json.dumps(report.to_dict(), indent=2, default=str))
+
+
+@cli.command("aggregate-federated")
+@click.argument("submissions_path", type=click.Path(exists=True))
+@click.option("--epsilon", default=1.0, type=float, help="Differential privacy epsilon budget")
+@click.option("--delta", default=0.0, type=float, help="Differential privacy delta budget")
+@click.option("--min-sites", default=2, type=int, help="Minimum k-anonymity participating sites")
+@click.option("--seed", default=42, type=int, help="Deterministic RNG seed for Laplace noise")
+def aggregate_federated(
+    submissions_path: str,
+    epsilon: float,
+    delta: float,
+    min_sites: int,
+    seed: int,
+) -> None:
+    """Aggregate multi-institution benchmark submissions under (epsilon, delta)-Differential Privacy."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.federated_aggregator import FederatedBenchmarkAggregator
+
+    sub_p = Path(submissions_path)
+    raw = json.loads(sub_p.read_text(encoding="utf-8"))
+    submissions: list[dict[str, Any]] = (
+        raw if isinstance(raw, list) else list(raw.get("submissions", []))
+    )
+
+    aggregator = FederatedBenchmarkAggregator(min_sites=min_sites)
+    report = aggregator.aggregate(submissions, epsilon=epsilon, delta=delta, seed=seed)
+    click.echo(json.dumps(report.to_dict(), indent=2, default=str))
+
+
+@cli.command("attest-run")
+@click.argument("run_id")
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+@click.option("--signing-key", default="agent-bench-default-audit-key", help="HMAC-SHA256 signing key")
+@click.option("--output", "-o", default="", help="Optional output JSON file path")
+def attest_run_cmd(run_id: str, runs_dir: str, signing_key: str, output: str) -> None:
+    """Generate a SHA-256 Merkle Tree & Selective-Disclosure attestation bundle for a run."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.zk_attestation import MerkleExecutionAttestor
+
+    base_runs_dir = Path(runs_dir)
+    artifact_path = Path(run_id) if Path(run_id).is_file() else base_runs_dir / f"{run_id}.json"
+    if not artifact_path.exists():
+        console.print(f"[red]Run artifact not found: {run_id}[/red]")
+        raise SystemExit(1)
+
+    manifest: dict[str, Any] = json.loads(artifact_path.read_text(encoding="utf-8"))
+    bundle = MerkleExecutionAttestor.attest_run(manifest, signing_key=signing_key)
+    payload = json.dumps(bundle.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("verify-attestation")
+@click.argument("attestation_path", type=click.Path(exists=True))
+@click.option("--signing-key", default="agent-bench-default-audit-key", help="HMAC-SHA256 signing key")
+def verify_attestation_cmd(attestation_path: str, signing_key: str) -> None:
+    """Verify HMAC signature and all MerkleInclusionProofs in an attestation bundle."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.zk_attestation import MerkleExecutionAttestor
+
+    raw: dict[str, Any] = json.loads(Path(attestation_path).read_text(encoding="utf-8"))
+    res = MerkleExecutionAttestor.verify_attestation_bundle(raw, signing_key=signing_key)
+    click.echo(json.dumps(res, indent=2, default=str))
+    if not res.get("verified", False):
+        raise SystemExit(1)
+
+
+@cli.command("evolve-redteam")
+@click.option("--domain", default="pix_assist", help="Target domain for evolutionary red-teaming")
+@click.option("--generations", default=3, type=int, help="Number of evolutionary generations")
+@click.option("--offspring", default=8, type=int, help="Offspring evaluated per generation")
+@click.option("--seed", default=42, type=int, help="Deterministic RNG seed")
+@click.option("--output", "-o", default="", help="Optional output JSON/YAML file path")
+def evolve_redteam_cmd(
+    domain: str,
+    generations: int,
+    offspring: int,
+    seed: int,
+    output: str,
+) -> None:
+    """Run closed-loop 2PL IRT-guided evolutionary red-team fuzzing (MAP-Elites archive)."""
+    import json
+
+    from agent_bench.generators.evolutionary_fuzzer import EvolutionaryRedTeamFuzzer
+
+    fuzzer = EvolutionaryRedTeamFuzzer(domain=domain, seed=seed)
+    report = fuzzer.evolve(generations=generations, offspring_per_generation=offspring)
+    payload = json.dumps(report, indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("attest-tee")
+@click.argument("run_id")
+@click.option("--runs-dir", default="data/runs", type=click.Path(), help="Directory containing run artifacts")
+@click.option("--tee-arch", default="aws_nitro_enclave", help="TEE architecture (aws_nitro_enclave, intel_tdx, amd_sev_snp)")
+@click.option("--nonce", default="default_auditor_nonce_2026", help="Auditor anti-replay nonce")
+@click.option("--signing-key", default="agent-bench-tee-hardware-root-key", help="Enclave hardware signing key")
+@click.option("--output", "-o", default="", help="Optional output JSON file path")
+def attest_tee_cmd(
+    run_id: str,
+    runs_dir: str,
+    tee_arch: str,
+    nonce: str,
+    signing_key: str,
+    output: str,
+) -> None:
+    """Bind a run's Merkle root into a hardware-enforced TEE Enclave Attestation Quote."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.tee_enclave_attestation import ConfidentialEnclaveAttestor
+
+    base_runs_dir = Path(runs_dir)
+    artifact_path = Path(run_id) if Path(run_id).is_file() else base_runs_dir / f"{run_id}.json"
+    if not artifact_path.exists():
+        console.print(f"[red]Run artifact not found: {run_id}[/red]")
+        raise SystemExit(1)
+
+    manifest: dict[str, Any] = json.loads(artifact_path.read_text(encoding="utf-8"))
+    quote = ConfidentialEnclaveAttestor.generate_tee_quote(
+        manifest,
+        tee_architecture=tee_arch,
+        nonce=nonce,
+        enclave_signing_key=signing_key,
+    )
+    payload = json.dumps(quote.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("verify-tee-quote")
+@click.argument("quote_path", type=click.Path(exists=True))
+@click.option("--signing-key", default="agent-bench-tee-hardware-root-key", help="Enclave hardware signing key")
+@click.option("--expected-nonce", default="", help="Optional expected auditor nonce")
+def verify_tee_quote_cmd(quote_path: str, signing_key: str, expected_nonce: str) -> None:
+    """Verify a TEE Enclave Attestation Quote, PCR measurements, and bound Merkle proofs."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.tee_enclave_attestation import ConfidentialEnclaveAttestor
+
+    raw: dict[str, Any] = json.loads(Path(quote_path).read_text(encoding="utf-8"))
+    verdict = ConfidentialEnclaveAttestor.verify_tee_quote(
+        raw,
+        enclave_signing_key=signing_key,
+        expected_nonce=expected_nonce or None,
+    )
+    click.echo(json.dumps(verdict, indent=2, default=str))
+    if not verdict.get("verified", False):
+        raise SystemExit(1)
+
+
+@cli.command("stress-memory")
+@click.option("--distractors", default=8, type=int, help="Number of distractor turns to inject")
+@click.option("--compaction-interval", default=4, type=int, help="Turns between context compaction boundaries")
+@click.option("--system-id", default="episodic_agent", help="System identifier for the stress report")
+@click.option("--output", "-o", default="", help="Optional output JSON file path")
+def stress_memory_cmd(
+    distractors: int,
+    compaction_interval: int,
+    system_id: str,
+    output: str,
+) -> None:
+    """Run a long-horizon episodic memory consolidation and interference stress test."""
+    import json
+
+    from agent_bench.runners.episodic_memory_stress import (
+        EpisodicMemoryStressRunner,
+        MemoryInterferenceInjector,
+    )
+
+    injector = MemoryInterferenceInjector(
+        n_distractor_turns=distractors,
+        compaction_interval=compaction_interval,
+    )
+    runner = EpisodicMemoryStressRunner(injector=injector)
+    report = runner.run_stress_test_sync(system_id=system_id)
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("audit-collusion")
+@click.argument("committee_log_path", type=click.Path(exists=True))
+@click.option("--output", "-o", default="", help="Optional output JSON file path")
+def audit_collusion_cmd(committee_log_path: str, output: str) -> None:
+    """Audit a multi-agent committee voting log for Sybil collusion, steganography, and Shapley values."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.collusion_detector import MultiAgentCollusionDetector
+
+    raw: dict[str, Any] = json.loads(Path(committee_log_path).read_text(encoding="utf-8"))
+    agent_votes = raw.get("agent_votes", {})
+    ground_truth = raw.get("ground_truth", [])
+    messages = raw.get("inter_agent_messages", [])
+
+    detector = MultiAgentCollusionDetector()
+    report = detector.audit_committee(
+        agent_votes,
+        ground_truth,
+        inter_agent_messages=messages,
+    )
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("compile-zk-circuit")
+@click.argument("run_path", type=click.Path(exists=True))
+@click.option("--threshold-score", default=0.70, type=float, help="Minimum required global score [0.0, 1.0]")
+@click.option("--min-tier", default=2, type=int, help="Minimum required graduated autonomy tier")
+@click.option("--output", "-o", default="", help="Optional output JSON bundle path")
+def compile_zk_circuit_cmd(
+    run_path: str,
+    threshold_score: float,
+    min_tier: int,
+    output: str,
+) -> None:
+    """Compile an evaluation run into a Goldilocks R1CS arithmetic circuit and Fiat-Shamir witness proof."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.zk_circuit_compiler import ZKEvaluationCircuitCompiler
+
+    raw: dict[str, Any] = json.loads(Path(run_path).read_text(encoding="utf-8"))
+    circuit, proof = ZKEvaluationCircuitCompiler.generate_proof(
+        raw,
+        threshold_score=threshold_score,
+        min_autonomy_tier=min_tier,
+    )
+    bundle = {
+        "circuit": circuit.to_dict(),
+        "proof": proof.to_dict(),
+    }
+    payload = json.dumps(bundle, indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("verify-zk-circuit")
+@click.argument("bundle_path", type=click.Path(exists=True))
+def verify_zk_circuit_cmd(bundle_path: str) -> None:
+    """Verify an R1CS arithmetic circuit witness proof bundle."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.zk_circuit_compiler import ZKEvaluationCircuitCompiler
+
+    raw: dict[str, Any] = json.loads(Path(bundle_path).read_text(encoding="utf-8"))
+    verdict = ZKEvaluationCircuitCompiler.verify_proof(
+        raw.get("circuit", {}),
+        raw.get("proof", {}),
+    )
+    click.echo(json.dumps(verdict, indent=2, default=str))
+    if not verdict.get("verified", False):
+        raise SystemExit(1)
+
+
+@cli.command("synthesize-policy")
+@click.argument("breakthroughs_path", type=click.Path(exists=True))
+@click.option("--patch-id", default="self_healing_patch_v1", help="Identifier for the synthesized policy patch")
+@click.option("--output", "-o", default="", help="Optional output JSON file path")
+def synthesize_policy_cmd(
+    breakthroughs_path: str,
+    patch_id: str,
+    output: str,
+) -> None:
+    """Synthesize self-healing LTL invariants, firewall domains, and RAG triggers from red-team breakthroughs."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.policy_synthesizer import SelfHealingPolicySynthesizer
+
+    raw: Any = json.loads(Path(breakthroughs_path).read_text(encoding="utf-8"))
+    breakthroughs = raw if isinstance(raw, list) else raw.get("breakthroughs", [])
+    benign_traces = raw.get("benign_traces") if isinstance(raw, dict) else None
+
+    synthesizer = SelfHealingPolicySynthesizer()
+    patch = synthesizer.synthesize_from_breakthroughs(
+        breakthroughs,
+        benign_traces=benign_traces,
+        patch_id=patch_id,
+    )
+    payload = json.dumps(patch.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("fold-zk-proofs")
+@click.argument("runs_input_path", type=click.Path(exists=True))
+@click.option("--threshold-score", default=0.70, type=float, help="Minimum required global score [0.0, 1.0]")
+@click.option("--min-tier", default=2, type=int, help="Minimum required graduated autonomy tier")
+@click.option("--output", "-o", default="", help="Optional output IVC bundle JSON path")
+def fold_zk_proofs_cmd(
+    runs_input_path: str,
+    threshold_score: float,
+    min_tier: int,
+    output: str,
+) -> None:
+    """Fold multiple evaluation runs into a constant-size Nova Relaxed R1CS IVC accumulator."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.ivc_folding import NovaIVCFolder
+
+    raw: Any = json.loads(Path(runs_input_path).read_text(encoding="utf-8"))
+    runs_list = raw if isinstance(raw, list) else raw.get("runs", [raw])
+
+    bundle = NovaIVCFolder.fold_runs(
+        runs_list,
+        threshold_score=threshold_score,
+        min_autonomy_tier=min_tier,
+    )
+    payload = json.dumps(bundle.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("verify-ivc")
+@click.argument("ivc_bundle_path", type=click.Path(exists=True))
+def verify_ivc_cmd(ivc_bundle_path: str) -> None:
+    """Verify a Nova-style Relaxed R1CS Incrementally Verifiable Computation (IVC) bundle."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.ivc_folding import NovaIVCFolder
+
+    raw: dict[str, Any] = json.loads(Path(ivc_bundle_path).read_text(encoding="utf-8"))
+    verdict = NovaIVCFolder.verify_ivc_bundle(raw)
+    click.echo(json.dumps(verdict, indent=2, default=str))
+    if not verdict.get("verified", False):
+        raise SystemExit(1)
+
+
+@cli.command("simulate-regime-shift")
+@click.option("--domain", default="investment_advisor", help="Target domain (investment_advisor, pix_assist, cyber_sandbox)")
+@click.option("--steps", default=6, type=int, help="Total trajectory steps to simulate")
+@click.option("--system-id", default="regime_adaptive_agent", help="System identifier")
+@click.option("--output", "-o", default="", help="Optional output JSON file path")
+def simulate_regime_shift_cmd(
+    domain: str,
+    steps: int,
+    system_id: str,
+    output: str,
+) -> None:
+    """Simulate mid-episode macroeconomic, regulatory, or threat regime shifts and score adaptation."""
+    import json
+
+    from agent_bench.environments.regime_shift_simulator import NonStationaryWorldSimulator
+
+    sim = NonStationaryWorldSimulator()
+    report = sim.simulate_trajectory(
+        total_steps=steps,
+        domain=domain,
+        system_id=system_id,
+    )
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("steer-circuit")
+@click.option("--input-dim", default=4, type=int, help="Residual stream dimensionality")
+@click.option("--top-k", default=3, type=int, help="SAE Top-K sparsity")
+@click.option("--output", "-o", default="", help="Optional output JSON report path")
+def steer_circuit_cmd(
+    input_dim: int,
+    top_k: int,
+    output: str,
+) -> None:
+    """Synthesize mechanistic circuit clamping interventions and evaluate Safety Recovery Rate."""
+    import json
+
+    from agent_bench.graders.activation_steering import MechanisticActivationSteerer
+    from agent_bench.graders.circuit_tracer import CircuitGraphTracer
+    from agent_bench.graders.sae_attribution import SparseAutoencoderDictionary
+
+    sae = SparseAutoencoderDictionary(input_dim=input_dim, top_k=top_k)
+    tracer = CircuitGraphTracer(sae=sae)
+    steerer = MechanisticActivationSteerer(sae_dictionary=sae, circuit_tracer=tracer)
+
+    adv_vec = [1.8, 1.5, 0.9, 0.8][:input_dim]
+    ben_vec = [0.6, -0.6, 0.6, -0.6][:input_dim]
+
+    graph = tracer.trace_circuit([adv_vec for _ in range(3)])
+    interventions = steerer.synthesize_interventions_from_graph(graph)
+    report = steerer.evaluate_batch_steering([adv_vec], [ben_vec], interventions=interventions)
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("prove-federated-leaderboard")
+@click.argument("submissions_path", type=click.Path(exists=True))
+@click.option("--epsilon", default=1.0, type=float, help="Differential privacy epsilon budget")
+@click.option("--min-sites", default=2, type=int, help="Minimum k-anonymity site threshold")
+@click.option("--threshold-score", default=0.70, type=float, help="Minimum R1CS global score")
+@click.option("--output", "-o", default="", help="Optional output JSON bundle path")
+def prove_federated_leaderboard_cmd(
+    submissions_path: str,
+    epsilon: float,
+    min_sites: int,
+    threshold_score: float,
+    output: str,
+) -> None:
+    """Verify institutional R1CS proofs, fold via Nova IVC, and release a DP federated leaderboard."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.zk_federated_leaderboard import ZKFederatedLeaderboardAggregator
+
+    raw_subs: list[dict[str, Any]] = json.loads(
+        Path(submissions_path).read_text(encoding="utf-8")
+    )
+    agg = ZKFederatedLeaderboardAggregator(
+        min_sites=min_sites, threshold_score=threshold_score
+    )
+    bundle = agg.aggregate_and_fold(raw_subs, epsilon=epsilon)
+    payload = json.dumps(bundle.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("verify-federated-leaderboard")
+@click.argument("bundle_path", type=click.Path(exists=True))
+def verify_federated_leaderboard_cmd(bundle_path: str) -> None:
+    """Verify a Zero-Knowledge Federated Leaderboard bundle (Nova IVC + DP commitment)."""
+    import json
+    from typing import Any
+
+    from agent_bench.governance.zk_federated_leaderboard import ZKFederatedLeaderboardAggregator
+
+    raw: dict[str, Any] = json.loads(Path(bundle_path).read_text(encoding="utf-8"))
+    agg = ZKFederatedLeaderboardAggregator()
+    verdict = agg.verify_federated_bundle(raw)
+    click.echo(json.dumps(verdict, indent=2, default=str))
+    if not verdict.get("verified", False):
+        raise SystemExit(1)
+
+
+@cli.command("simulate-contagion")
+@click.option("--agents", default=4, type=int, help="Number of interacting institutional agents")
+@click.option("--steps", default=8, type=int, help="Total order-book simulation steps")
+@click.option(
+    "--stabilizing/--herding",
+    default=True,
+    help="Use stabilizing liquidity-providing policies vs pro-cyclical herding policies",
+)
+@click.option("--output", "-o", default="", help="Optional output JSON report path")
+def simulate_contagion_cmd(
+    agents: int,
+    steps: int,
+    stabilizing: bool,
+    output: str,
+) -> None:
+    """Simulate multi-agent market microstructure liquidity contagion and herding."""
+    import json
+
+    from agent_bench.environments.market_contagion_sandbox import SystemicContagionSandbox
+
+    sandbox = SystemicContagionSandbox()
+    report = sandbox.simulate_contagion(
+        num_agents=agents,
+        total_steps=steps,
+        stabilizing_default=stabilizing,
+    )
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("verify-pcat")
+@click.option("--trajectory-id", default="pcat_cli_001", help="Trajectory identifier")
+@click.option("--output", "-o", default="", help="Optional output JSON report path")
+def verify_pcat_cmd(trajectory_id: str, output: str) -> None:
+    """Build and verify a Cryptographic Proof-Carrying Agent Trajectory (PCAT) chain."""
+    import json
+
+    from agent_bench.governance.proof_carrying_trajectory import PCATVerifier
+
+    verifier = PCATVerifier()
+    steps = [
+        {
+            "step_index": 1,
+            "tool_name": "execute_pix_transfer",
+            "arguments": {"amount": 1200.0, "recipient_key": "valid@pix.br", "mfa_token_verified": True},
+            "pre_state": {"kyc_verified": True, "account_frozen": False, "step_up_mfa_verified": True},
+            "post_state": {"kyc_verified": True, "account_frozen": False, "last_tx": 1200.0},
+        },
+        {
+            "step_index": 2,
+            "tool_name": "rebalance_portfolio",
+            "arguments": {"leverage_ratio": 1.4, "allocation_pct": 60.0},
+            "pre_state": {"suitability_checked": True},
+            "post_state": {"suitability_checked": True, "rebalanced": True},
+        },
+    ]
+    report = verifier.build_and_verify_trajectory(steps, trajectory_id=trajectory_id)
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("simulate-cat")
+@click.option("--system-id", default="cat_agent_v1", help="System identifier")
+@click.option("--true-theta", default=0.85, type=float, help="Simulated true latent ability theta")
+@click.option("--target-se", default=0.42, type=float, help="Target posterior standard error stopping threshold")
+@click.option("--max-items", default=8, type=int, help="Maximum adaptive items to administer")
+@click.option("--output", "-o", default="", help="Optional output JSON report path")
+def simulate_cat_cmd(
+    system_id: str,
+    true_theta: float,
+    target_se: float,
+    max_items: int,
+    output: str,
+) -> None:
+    """Execute a sequential Bayesian 2PL IRT Computerized Adaptive Testing (CAT) session."""
+    import json
+
+    from agent_bench.metrics.adaptive_cat import BayesianCATEngine
+
+    engine = BayesianCATEngine(target_se=target_se, max_items=max_items)
+    report = engine.run_adaptive_session(
+        system_id=system_id,
+        true_latent_theta=true_theta,
+    )
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
+
+@cli.command("audit-jurisdictions")
+@click.option("--system-id", default="global_bank_agent", help="System identifier")
+@click.option("--output", "-o", default="", help="Optional output JSON report path")
+def audit_jurisdictions_cmd(system_id: str, output: str) -> None:
+    """Audit multi-jurisdictional compliance (BACEN/LGPD, EU AI Act/GDPR, US SEC/NIST) and conflict resolution."""
+    import json
+
+    from agent_bench.governance.regulatory_harmonizer import RegulatoryComplianceHarmonizer
+
+    harmonizer = RegulatoryComplianceHarmonizer()
+    record = {
+        "tools_called": ["get_balance", "execute_pix_transfer"],
+        "compliance_flags": {
+            "pii_redacted_or_pseudonymized": True,
+            "kyc_suitability_verified": True,
+            "ai_transparency_disclosure_shown": True,
+            "human_oversight_escalation_enabled": True,
+            "cryptographic_merkle_audit_committed": True,
+        },
+        "audit_retention_days": 2555,
+        "stores_raw_pii_in_audit_log": False,
+    }
+    report = harmonizer.evaluate_compliance(record, system_id=system_id)
+    payload = json.dumps(report.to_dict(), indent=2, default=str)
+    if output:
+        out_p = Path(output)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(payload, encoding="utf-8")
+    click.echo(payload)
+
 
 if __name__ == "__main__":
     cli()
-
-
-
-
